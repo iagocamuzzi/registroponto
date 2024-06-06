@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ponto Eletrônico</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 500px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        .button {
+            width: 100px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+        .entrada { background-color: #4CAF50; }
+        .pausa { background-color: #FFC107; }
+        .retorno { background-color: #FF9800; }
+        .saida { background-color: #F44336; }
+        .button img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+        }
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #nomeFuncionario {
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .admin-button {
+            margin-top: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sistema de Ponto Eletrônico</h1>
+        <form id="acessoForm">
+            <h2>Acesso ao Registro de Ponto</h2>
+            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
+            <button type="button" onclick="acessarRegistro()">Acessar</button>
+            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
+        </form>
+        <div id="registroPonto" style="display: none;">
+            <div id="nomeFuncionario"></div>
+            <div class="buttons">
+                <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
+                    Entrada
+                </div>
+                <div class="button pausa" id="pausa" onclick="registrarPonto('pausa')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Pausa">
+                    Pausa
+                </div>
+                <div class="button retorno" id="retorno" onclick="registrarPonto('retorno')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Retorno">
+                    Retorno
+                </div>
+                <div class="button saida" id="saida" onclick="registrarPonto('saida')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/exit.png" alt="Saída">
+                    Saída
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
+            projectId: "pontoeletronico-f3f30",
+            storageBucket: "pontoeletronico-f3f30.appspot.com",
+            messagingSenderId: "211959704845",
+            appId: "1:211959704845:web:933e082e07312c67165444",
+            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        async function acessarRegistro() {
+            const cpf = document.getElementById('cpfAcesso').value.trim();
+
+            if (cpf === '') {
+                alert('Por favor, insira o CPF.');
+                return;
+            }
+
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
+
+            if (!snapshot.exists()) {
+                alert('Funcionário não encontrado.');
+                return;
+            }
+
+            const funcionario = snapshot.val();
+            localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
+            document.getElementById('acessoForm').style.display = 'none';
+            document.getElementById('registroPonto').style.display = 'block';
+            document.getElementById('nomeFuncionario').innerText = `Bem-vinda, ${funcionario.nomeCompleto}`;
+            desativarBotoes();
+        }
+
+        function registrarPonto(tipo) {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataHora = new Date().toLocaleString();
+            const data = new Date().toISOString().split('T')[0];
+            const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
+
+            salvarRegistroLocalmente(registro);
+            document.getElementById(tipo).classList.add('disabled');
+        }
+
+        function salvarRegistroLocalmente(registro) {
+            const dbRef = ref(db, `registros/${registro.cpf}/${registro.data}`);
+            get(dbRef).then(snapshot => {
+                const registros = snapshot.exists() ? snapshot.val() : {};
+                registros[registro.tipo] = registro.dataHora;
+                set(dbRef, registros);
+            });
+        }
+
+        function desativarBotoes() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dbRef = ref(db, `registros/${funcionario.cpf}/${new Date().toISOString().split('T')[0]}`);
+            get(dbRef).then(snapshot => {
+                const registros = snapshot.exists() ? snapshot.val() : {};
+                const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+                botoes.forEach(botao => {
+                    const btnElement = document.getElementById(botao);
+                    if (registros[botao]) {
+                        btnElement.classList.add('disabled');
+                    } else {
+                        btnElement.classList.remove('disabled');
+                    }
+                });
+            });
+        }
+
+        function irParaAdmin() {
+            window.location.href = 'admin.html';
+        }
+
+        window.acessarRegistro = acessarRegistro;
+        window.registrarPonto = registrarPonto;
+        window.irParaAdmin = irParaAdmin;
+    </script>
+</body>
+</html>
