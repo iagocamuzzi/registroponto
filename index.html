@@ -82,6 +82,19 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        .registro-dia {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .registro-dia th, .registro-dia td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .registro-dia th {
+            background-color: #f2f2f2;
+        }
     </style>
 </head>
 <body>
@@ -113,6 +126,17 @@
                     Saída
                 </div>
             </div>
+            <table id="tabelaRegistros" class="registro-dia" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Horário</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Registros do dia serão inseridos aqui -->
+                </tbody>
+            </table>
         </div>
     </div>
     <script type="module">
@@ -153,6 +177,7 @@
             document.getElementById('acessoForm').style.display = 'none';
             document.getElementById('registroPonto').style.display = 'block';
             document.getElementById('nomeFuncionario').innerText = `Bem-vinda, ${funcionario.nomeCompleto}`;
+            carregarRegistrosDoDia();
             desativarBotoes();
         }
 
@@ -163,6 +188,7 @@
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
 
             salvarRegistroLocalmente(registro);
+            adicionarRegistroNaTabela(registro);
             document.getElementById(tipo).classList.add('disabled');
         }
 
@@ -190,6 +216,37 @@
                     }
                 });
             });
+        }
+
+        function carregarRegistrosDoDia() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = ref(db, `registros/${funcionario.cpf}/${dataAtual}`);
+            get(dbRef).then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+                    tabela.innerHTML = ''; // Limpar a tabela
+                    Object.keys(registros).forEach(tipo => {
+                        const novaLinha = tabela.insertRow();
+                        const celulaTipo = novaLinha.insertCell(0);
+                        const celulaHorario = novaLinha.insertCell(1);
+                        celulaTipo.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1);
+                        celulaHorario.textContent = registros[tipo].split(' ')[1];
+                    });
+                    document.getElementById('tabelaRegistros').style.display = 'table';
+                }
+            });
+        }
+
+        function adicionarRegistroNaTabela(registro) {
+            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+            const novaLinha = tabela.insertRow();
+            const celulaTipo = novaLinha.insertCell(0);
+            const celulaHorario = novaLinha.insertCell(1);
+            celulaTipo.textContent = registro.tipo.charAt(0).toUpperCase() + registro.tipo.slice(1);
+            celulaHorario.textContent = registro.dataHora.split(' ')[1];
+            document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
         function irParaAdmin() {
