@@ -95,6 +95,16 @@
         .registro-dia th {
             background-color: #f2f2f2;
         }
+        .pdf-button {
+            display: none;
+            margin-top: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -137,11 +147,13 @@
                     <!-- Registros do dia serão inseridos aqui -->
                 </tbody>
             </table>
+            <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { jsPDF } from "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
@@ -190,6 +202,10 @@
             salvarRegistroLocalmente(registro);
             adicionarRegistroNaTabela(registro);
             document.getElementById(tipo).classList.add('disabled');
+
+            if (tipo === 'saida') {
+                document.getElementById('gerarPDF').style.display = 'block';
+            }
         }
 
         function salvarRegistroLocalmente(registro) {
@@ -249,12 +265,37 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
+        function gerarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toLocaleDateString();
+            doc.text(`Comprovante de Registro de Ponto`, 20, 20);
+            doc.text(`Funcionário: ${funcionario.nomeCompleto}`, 20, 30);
+            doc.text(`Data: ${dataAtual}`, 20, 40);
+
+            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+            const linhas = tabela.getElementsByTagName('tr');
+
+            let y = 50;
+            for (let i = 0; i < linhas.length; i++) {
+                const tipo = linhas[i].getElementsByTagName('td')[0].textContent;
+                const horario = linhas[i].getElementsByTagName('td')[1].textContent;
+                doc.text(`${tipo}: ${horario}`, 20, y);
+                y += 10;
+            }
+
+            doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
+        }
+
         function irParaAdmin() {
             window.location.href = 'admin.html';
         }
 
         window.acessarRegistro = acessarRegistro;
         window.registrarPonto = registrarPonto;
+        window.gerarPDF = gerarPDF;
         window.irParaAdmin = irParaAdmin;
     </script>
 </body>
