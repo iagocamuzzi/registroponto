@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administração de Pontos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        .sidebar {
+            background-color: #333;
+            color: white;
+            width: 200px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #444;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .sidebar .submenu {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: 20px;
+        }
+        .sidebar .submenu a {
+            font-size: 16px;
+        }
+        .container {
+            flex-grow: 1;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        input, button, select, .editable {
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .admin-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .editable {
+            border: none;
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <a href="#" onclick="toggleSubmenu('cadastroSubmenu')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/user.png"/> Cadastrar
+        </a>
+        <div id="cadastroSubmenu" class="submenu">
+            <a href="#" onclick="showSection('novoCadastro')">Novo Cadastro</a>
+            <a href="#" onclick="showSection('consultarCadastro')">Consultar</a>
+        </div>
+        <a href="#" onclick="showSection('relatorios')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
+        </a>
+    </div>
+    <div class="container">
+        <h1>Administração de Pontos</h1>
+        <div id="novoCadastro" class="section">
+            <form id="cadastroForm">
+                <h2>Cadastro de Funcionário</h2>
+                <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
+                <input type="text" id="cpfCadastro" placeholder="CPF" required>
+                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
+                <input type="email" id="emailCadastro" placeholder="Email" required>
+                <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
+                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
+                <input type="number" id="salarioCadastro" placeholder="Salário" required>
+                <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
+            </form>
+        </div>
+        <div id="consultarCadastro" class="section">
+            <h2>Consultar Funcionário</h2>
+            <table id="tabelaFuncionarios">
+                <thead>
+                    <tr>
+                        <th>Nome Completo</th>
+                        <th>CPF</th>
+                        <th>Detalhes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Lista de funcionários será inserida aqui -->
+                </tbody>
+            </table>
+            <div id="detalhesFuncionario"></div>
+        </div>
+        <div id="relatorios" class="section">
+            <div class="filter">
+                <label for="filterFuncionario">Selecionar Funcionário:</label>
+                <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
+                    <option value="">Selecione um funcionário</option>
+                </select>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Entrada</th>
+                        <th>Pausa</th>
+                        <th>Retorno</th>
+                        <th>Saída</th>
+                        <th>Horas Trabalhadas</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="registrosTabelaAdmin">
+                    <!-- Registros serão inseridos aqui -->
+                </tbody>
+            </table>
+            <div class="admin-buttons">
+                <button onclick="limparDados()">Limpar Todos os Dados</button>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
+            projectId: "pontoeletronico-f3f30",
+            storageBucket: "pontoeletronico-f3f30.appspot.com",
+            messagingSenderId: "211959704845",
+            appId: "1:211959704845:web:933e082e07312c67165444",
+            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarFuncionarios();
+            carregarFiltroFuncionarios();
+        });
+
+        function toggleSubmenu(submenuId) {
+            const submenu = document.getElementById(submenuId);
+            submenu.style.display = submenu.style.display === 'none' || submenu.style.display === '' ? 'flex' : 'none';
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        async function cadastrarFuncionario() {
+            const nomeCompleto = document.getElementById('nomeCompletoCadastro').value.trim();
+            const cpf = document.getElementById('cpfCadastro').value.trim();
+            const dataNascimento = document.getElementById('dataNascimentoCadastro').value;
+            const email = document.getElementById('emailCadastro').value.trim();
+            const whatsapp = document.getElementById('whatsappCadastro').value.trim();
+            const dataAdmissao = document.getElementById('dataAdmissaoCadastro').value;
+            const salario = document.getElementById('salarioCadastro').value.trim();
+
+            if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
+
+            alert('Funcionário cadastrado com sucesso!');
+            document.getElementById('cadastroForm').reset();
+            carregarFuncionarios();
+            carregarFiltroFuncionarios();
+        }
+
+        async function carregarFuncionarios() {
+            const dbRef = ref(db, 'funcionarios');
+            const snapshot = await get(dbRef);
+
+            const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
+            tabelaFuncionarios.innerHTML = ''; // Limpar a tabela
+
+            if (snapshot.exists()) {
+                const funcionarios = snapshot.val();
+                Object.keys(funcionarios).forEach(cpf => {
+                    const funcionario = funcionarios[cpf];
+                    const novaLinha = tabelaFuncionarios.insertRow();
+                    const celulaNomeCompleto = novaLinha.insertCell(0);
+                    const celulaCpf = novaLinha.insertCell(1);
+                    const celulaDetalhes = novaLinha.insertCell(2);
+
+                    celulaNomeCompleto.textContent = funcionario.nomeCompleto;
+                    celulaCpf.textContent = funcionario.cpf;
+                    celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
+                });
+            }
+        }
+
+        async function carregarFiltroFuncionarios() {
+            const dbRef = ref(db, 'funcionarios');
+            const snapshot = await get(dbRef);
+
+            const filtroFuncionario = document.getElementById('filterFuncionario');
+            filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
+
+            if (snapshot.exists()) {
+                const funcionarios = snapshot.val();
+                Object.keys(funcionarios).forEach(cpf => {
+                    const funcionario = funcionarios[cpf];
+                    const option = document.createElement('option');
+                    option.value = funcionario.cpf;
+                    option.textContent = funcionario.nomeCompleto;
+                    filtroFuncionario.appendChild(option);
+                });
+            }
+        }
+
+        async function verDetalhesFuncionario(cpf) {
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
+            const detalhesFuncionario = document.getElementById('detalhesFuncionario');
+            detalhesFuncionario.innerHTML = '';
+
+            if (!snapshot.exists()) {
+                detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
+                return;
+            }
+
+            const funcionario = snapshot.val();
+            detalhesFuncionario.innerHTML = `
+                <h3>Detalhes do Funcionário</h3>
+                <p><strong>Nome Completo:</strong> ${funcionario.nomeCompleto}</p>
+                <p><strong>CPF:</strong> ${funcionario.cpf}</p>
+                <p><strong>Data de Nascimento:</strong> ${funcionario.dataNascimento}</p>
+                <p><strong>Email:</strong> ${funcionario.email}</p>
+                <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
+                <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
+                <p><strong>Salário:</strong> ${funcionario.salario}</p>
+            `;
+        }
+
+        async function carregarRegistrosFuncionario() {
+            const cpf = document.getElementById('filterFuncionario').value;
+            if (!cpf) {
+                document.getElementById('registrosTabelaAdmin').innerHTML = '';
+                return;
+            }
+
+            const dbRef = ref(db, `registros/${cpf}`);
+            const snapshot = await get(dbRef);
+
+            const tabela = document.getElementById('registrosTabelaAdmin');
+            tabela.innerHTML = ''; // Limpar a tabela
+
+            const diasDoMes = obterDiasDoMesAtual();
+            const registros = snapshot.exists() ? snapshot.val() : {};
+
+            diasDoMes.forEach(dia => {
+                const registro = registros[dia] || { entrada: '', pausa: '', retorno: '', saida: '' };
+                adicionarRegistroNaTabela(tabela, { data: dia, ...registro, cpf });
+            });
+        }
+
+        function obterDiasDoMesAtual() {
+            const diasDoMes = [];
+            const dataAtual = new Date();
+            const ano = dataAtual.getFullYear();
+            const mes = dataAtual.getMonth();
+
+            for (let dia = 1; dia <= new Date(ano, mes + 1, 0).getDate(); dia++) {
+                const data = new Date(ano, mes, dia);
+                diasDoMes.push(data.toISOString().split('T')[0]);
+            }
+
+            return diasDoMes;
+        }
+
+        function adicionarRegistroNaTabela(tabela, registro) {
+            const novaLinha = tabela.insertRow();
+            const celulaData = novaLinha.insertCell(0);
+            const celulaEntrada = novaLinha.insertCell(1);
+            const celulaPausa = novaLinha.insertCell(2);
+            const celulaRetorno = novaLinha.insertCell(3);
+            const celulaSaida = novaLinha.insertCell(4);
+            const celulaHorasTrabalhadas = novaLinha.insertCell(5);
+            const celulaAcoes = novaLinha.insertCell(6);
+
+            celulaData.textContent = `${registro.data.split('-').reverse().join('/')}`;
+            celulaEntrada.innerHTML = `<input type="time" class="editable" value="${registro.entrada ? extrairHora(registro.entrada) : ''}" data-cpf="${registro.cpf}" data-tipo="entrada" data-data="${registro.data}">`;
+            celulaPausa.innerHTML = `<input type="time" class="editable" value="${registro.pausa ? extrairHora(registro.pausa) : ''}" data-cpf="${registro.cpf}" data-tipo="pausa" data-data="${registro.data}">`;
+            celulaRetorno.innerHTML = `<input type="time" class="editable" value="${registro.retorno ? extrairHora(registro.retorno) : ''}" data-cpf="${registro.cpf}" data-tipo="retorno" data-data="${registro.data}">`;
+            celulaSaida.innerHTML = `<input type="time" class="editable" value="${registro.saida ? extrairHora(registro.saida) : ''}" data-cpf="${registro.cpf}" data-tipo="saida" data-data="${registro.data}">`;
+            celulaHorasTrabalhadas.textContent = calcularHorasTrabalhadas(registro);
+            celulaAcoes.innerHTML = `<button onclick="salvarAlteracao('${registro.data}', '${registro.cpf}')">Salvar</button>`;
+        }
+
+        async function salvarAlteracao(data, cpf) {
+            const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
+
+            const registroAtualizado = {};
+            inputs.forEach(input => {
+                const tipo = input.getAttribute('data-tipo');
+                const valor = input.value;
+                registroAtualizado[tipo] = valor ? `${data} ${valor}` : '';
+            });
+
+            const dbRef = ref(db, `registros/${cpf}/${data}`);
+            await set(dbRef, registroAtualizado);
+
+            alert('Alterações salvas com sucesso!');
+            carregarRegistrosFuncionario();
+        }
+
+        async function limparDados() {
+            if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
+                const dbRefFuncionarios = ref(db, 'funcionarios');
+                const dbRefRegistros = ref(db, 'registros');
+
+                await remove(dbRefFuncionarios);
+                await remove(dbRefRegistros);
+
+                alert('Todos os dados foram limpos.');
+                carregarFuncionarios();
+                carregarFiltroFuncionarios();
+                document.getElementById('registrosTabelaAdmin').innerHTML = '';
+            }
+        }
+
+        function extrairHora(dataHora) {
+            const [date, time] = dataHora.split(' ');
+            return time;
+        }
+
+        function calcularHorasTrabalhadas(registro) {
+            const entrada = registro.entrada ? new Date(`1970-01-01T${extrairHora(registro.entrada)}`) : null;
+            const pausa = registro.pausa ? new Date(`1970-01-01T${extrairHora(registro.pausa)}`) : null;
+            const retorno = registro.retorno ? new Date(`1970-01-01T${extrairHora(registro.retorno)}`) : null;
+            const saida = registro.saida ? new Date(`1970-01-01T${extrairHora(registro.saida)}`) : null;
+
+            if (entrada && saida) {
+                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                if (pausa && retorno) {
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                }
+                return horasTrabalhadas.toFixed(2); // Retornar com 2 casas decimais
+            }
+            return '';
+        }
+
+        window.toggleSubmenu = toggleSubmenu;
+        window.showSection = showSection;
+        window.cadastrarFuncionario = cadastrarFuncionario;
+        window.carregarFuncionarios = carregarFuncionarios;
+        window.carregarFiltroFuncionarios = carregarFiltroFuncionarios;
+        window.verDetalhesFuncionario = verDetalhesFuncionario;
+        window.carregarRegistrosFuncionario = carregarRegistrosFuncionario;
+        window.salvarAlteracao = salvarAlteracao;
+        window.limparDados = limparDados;
+    </script>
+</body>
+</html>
