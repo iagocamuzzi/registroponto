@@ -167,7 +167,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        window.acessarRegistro = async function acessarRegistro() {
+        function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
 
             if (cpf === '') {
@@ -176,23 +176,23 @@
             }
 
             const dbRef = db.ref(`funcionarios/${cpf}`);
-            const snapshot = await dbRef.get();
+            dbRef.get().then(snapshot => {
+                if (!snapshot.exists()) {
+                    alert('Funcionário não encontrado.');
+                    return;
+                }
 
-            if (!snapshot.exists()) {
-                alert('Funcionário não encontrado.');
-                return;
-            }
-
-            const funcionario = snapshot.val();
-            localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
-            document.getElementById('acessoForm').style.display = 'none';
-            document.getElementById('registroPonto').style.display = 'block';
-            document.getElementById('nomeFuncionario').innerText = `Bem-vinda, ${funcionario.nomeCompleto}`;
-            carregarRegistrosDoDia();
-            desativarBotoes();
+                const funcionario = snapshot.val();
+                localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
+                document.getElementById('acessoForm').style.display = 'none';
+                document.getElementById('registroPonto').style.display = 'block';
+                document.getElementById('nomeFuncionario').innerText = `Bem-vinda, ${funcionario.nomeCompleto}`;
+                carregarRegistrosDoDia();
+                desativarBotoes();
+            });
         }
 
-        window.registrarPonto = function registrarPonto(tipo) {
+        function registrarPonto(tipo) {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
             const dataHora = new Date().toLocaleString();
             const data = new Date().toISOString().split('T')[0];
@@ -264,7 +264,7 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        window.gerarPDF = function gerarPDF() {
+        function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
@@ -288,9 +288,14 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        window.irParaAdmin = function irParaAdmin() {
+        function irParaAdmin() {
             window.location.href = 'admin.html';
         }
+
+        window.acessarRegistro = acessarRegistro;
+        window.registrarPonto = registrarPonto;
+        window.gerarPDF = gerarPDF;
+        window.irParaAdmin = irParaAdmin;
     </script>
 </body>
 </html>
