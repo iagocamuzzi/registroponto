@@ -151,10 +151,9 @@
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
     <script>
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
@@ -165,10 +164,10 @@
             databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        window.acessarRegistro = async function acessarRegistro() {
+        async function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
 
             if (cpf === '') {
@@ -176,8 +175,8 @@
                 return;
             }
 
-            const dbRef = ref(db, `funcionarios/${cpf}`);
-            const snapshot = await get(dbRef);
+            const dbRef = db.ref(`funcionarios/${cpf}`);
+            const snapshot = await dbRef.get();
 
             if (!snapshot.exists()) {
                 alert('Funcionário não encontrado.');
@@ -193,7 +192,7 @@
             desativarBotoes();
         }
 
-        window.registrarPonto = function registrarPonto(tipo) {
+        function registrarPonto(tipo) {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
             const dataHora = new Date().toLocaleString();
             const data = new Date().toISOString().split('T')[0];
@@ -209,18 +208,18 @@
         }
 
         function salvarRegistroLocalmente(registro) {
-            const dbRef = ref(db, `registros/${registro.cpf}/${registro.data}`);
-            get(dbRef).then(snapshot => {
+            const dbRef = db.ref(`registros/${registro.cpf}/${registro.data}`);
+            dbRef.get().then(snapshot => {
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 registros[registro.tipo] = registro.dataHora;
-                set(dbRef, registros);
+                dbRef.set(registros);
             });
         }
 
         function desativarBotoes() {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dbRef = ref(db, `registros/${funcionario.cpf}/${new Date().toISOString().split('T')[0]}`);
-            get(dbRef).then(snapshot => {
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${new Date().toISOString().split('T')[0]}`);
+            dbRef.get().then(snapshot => {
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
                 botoes.forEach(botao => {
@@ -237,8 +236,8 @@
         function carregarRegistrosDoDia() {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
             const dataAtual = new Date().toISOString().split('T')[0];
-            const dbRef = ref(db, `registros/${funcionario.cpf}/${dataAtual}`);
-            get(dbRef).then(snapshot => {
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
+            dbRef.get().then(snapshot => {
                 if (snapshot.exists()) {
                     const registros = snapshot.val();
                     const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
@@ -265,7 +264,7 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        window.gerarPDF = function gerarPDF() {
+        function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
@@ -289,7 +288,7 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        window.irParaAdmin = function irParaAdmin() {
+        function irParaAdmin() {
             window.location.href = 'admin.html';
         }
     </script>
