@@ -151,7 +151,7 @@
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
-    <script type="module">
+    <script>
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
@@ -168,7 +168,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        async function acessarRegistro() {
+        window.acessarRegistro = async function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
 
             if (cpf === '') {
@@ -193,7 +193,7 @@
             desativarBotoes();
         }
 
-        function registrarPonto(tipo) {
+        window.registrarPonto = function registrarPonto(tipo) {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
             const dataHora = new Date().toLocaleString();
             const data = new Date().toISOString().split('T')[0];
@@ -265,7 +265,7 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        function gerarPDF() {
+        window.gerarPDF = function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
@@ -289,14 +289,9 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        function irParaAdmin() {
+        window.irParaAdmin = function irParaAdmin() {
             window.location.href = 'admin.html';
         }
-
-        window.acessarRegistro = acessarRegistro;
-        window.registrarPonto = registrarPonto;
-        window.gerarPDF = gerarPDF;
-        window.irParaAdmin = irParaAdmin;
     </script>
 </body>
 </html>
