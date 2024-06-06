@@ -167,7 +167,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        async function acessarRegistro() {
+        window.acessarRegistro = async function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
 
             if (cpf === '') {
@@ -192,7 +192,7 @@
             desativarBotoes();
         }
 
-        function registrarPonto(tipo) {
+        window.registrarPonto = function registrarPonto(tipo) {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
             const dataHora = new Date().toLocaleString();
             const data = new Date().toISOString().split('T')[0];
@@ -264,7 +264,7 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        function gerarPDF() {
+        window.gerarPDF = function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
@@ -288,7 +288,7 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        function irParaAdmin() {
+        window.irParaAdmin = function irParaAdmin() {
             window.location.href = 'admin.html';
         }
     </script>
