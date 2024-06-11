@@ -147,6 +147,12 @@
                     <!-- Registros do dia serão inseridos aqui -->
                 </tbody>
             </table>
+            <div id="resumoDia" style="display: none;">
+                <h3>Resumo do Dia</h3>
+                <p id="horasTrabalhadasDia"></p>
+                <p id="horasExtrasDia"></p>
+                <p id="totalHorasMes"></p>
+            </div>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
     </div>
@@ -204,6 +210,7 @@
 
             if (tipo === 'saida') {
                 document.getElementById('gerarPDF').style.display = 'block';
+                mostrarResumoDoDia();
             }
         }
 
@@ -220,14 +227,12 @@
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
             const dbRef = db.ref(`registros/${funcionario.cpf}/${new Date().toISOString().split('T')[0]}`);
             dbRef.get().then(snapshot => {
-                const registros = snapshot.exists() ? snapshot.val() : {};
-                const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
-                botoes.forEach(botao => {
-                    const btnElement = document.getElementById(botao);
-                    if (registros[botao]) {
-                        btnElement.classList.add('disabled');
-                    } else {
-                        btnElement.classList.remove('disabled');
+                if (!snapshot.exists()) return;
+
+                const registros = snapshot.val();
+                ['entrada', 'pausa', 'retorno', 'saida'].forEach(tipo => {
+                    if (registros[tipo]) {
+                        document.getElementById(tipo).classList.add('disabled');
                     }
                 });
             });
@@ -264,6 +269,68 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
+        function mostrarResumoDoDia() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
+            dbRef.get().then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    const horasTrabalhadas = calcularHorasTrabalhadas(registros);
+                    const horasExtras = calcularHorasExtras(horasTrabalhadas);
+                    const totalHorasMes = calcularTotalHorasMes(funcionario.cpf, dataAtual);
+
+                    document.getElementById('horasTrabalhadasDia').innerText = `Horas Trabalhadas no Dia: ${horasTrabalhadas} horas`;
+                    document.getElementById('horasExtrasDia').innerText = `Horas Extras no Dia: ${horasExtras} horas`;
+                    document.getElementById('totalHorasMes').innerText = `Total de Horas no Mês: ${totalHorasMes} horas`;
+                    document.getElementById('resumoDia').style.display = 'block';
+                }
+            });
+        }
+
+        function calcularHorasTrabalhadas(registros) {
+            const entrada = registros.entrada ? new Date(`1970-01-01T${extrairHora(registros.entrada)}`) : null;
+            const pausa = registros.pausa ? new Date(`1970-01-01T${extrairHora(registros.pausa)}`) : null;
+            const retorno = registros.retorno ? new Date(`1970-01-01T${extrairHora(registros.retorno)}`) : null;
+            const saida = registros.saida ? new Date(`1970-01-01T${extrairHora(registros.saida)}`) : null;
+
+            if (entrada && saida) {
+                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                if (pausa && retorno) {
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                }
+                return horasTrabalhadas.toFixed(2); // Retornar com 2 casas decimais
+            }
+            return '0.00';
+        }
+
+        function calcularHorasExtras(horasTrabalhadas) {
+            const horasTrabalhadasFloat = parseFloat(horasTrabalhadas);
+            if (horasTrabalhadasFloat > 8) {
+                return (horasTrabalhadasFloat - 8).toFixed(2); // Subtrair 8 horas e retornar com 2 casas decimais
+            }
+            return '0.00';
+        }
+
+        function calcularTotalHorasMes(cpf, dataAtual) {
+            const [ano, mes] = dataAtual.split('-');
+            const dbRef = db.ref(`registros/${cpf}`);
+            return dbRef.get().then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    let totalHoras = 0;
+                    Object.keys(registros).forEach(data => {
+                        if (data.startsWith(`${ano}-${mes}`)) {
+                            const horasTrabalhadas = calcularHorasTrabalhadas(registros[data]);
+                            totalHoras += parseFloat(horasTrabalhadas);
+                        }
+                    });
+                    return totalHoras.toFixed(2);
+                }
+                return '0.00';
+            });
+        }
+
         function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -286,6 +353,11 @@
             }
 
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
+        }
+
+        function extrairHora(dataHora) {
+            const [date, time] = dataHora.split(' ');
+            return time;
         }
 
         function irParaAdmin() {
