@@ -432,11 +432,11 @@
             const saida = registro.saida ? new Date(`1970-01-01T${extrairHora(registro.saida)}`) : null;
 
             if (entrada && saida) {
-                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60);
                 if (pausa && retorno) {
-                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60);
                 }
-                return horasTrabalhadas.toFixed(2); // Retornar com 2 casas decimais
+                return horasTrabalhadas.toFixed(2);
             }
             return '';
         }
@@ -444,7 +444,7 @@
         function calcularHorasExtras(registro) {
             const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
             if (horasTrabalhadas > 8) {
-                return (horasTrabalhadas - 8).toFixed(2); // Subtrair 8 horas e retornar com 2 casas decimais
+                return (horasTrabalhadas - 8).toFixed(2);
             }
             return '0.00';
         }
