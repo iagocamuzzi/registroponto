@@ -259,28 +259,30 @@
             `;
         }
 
-        async function carregarRegistrosFuncionario() {
+        function carregarRegistrosFuncionario() {
             const cpf = document.getElementById('filterFuncionario').value;
             if (!cpf) {
                 document.getElementById('registrosTabelaAdmin').innerHTML = '';
                 return;
             }
 
-            const registrosRef = firebase.database().ref(`/registrosPonto/${cpf}`);
-            const snapshot = await registrosRef.once('value');
-            const registros = snapshot.val() || {};
-
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
             const tabela = document.getElementById('registrosTabelaAdmin');
             tabela.innerHTML = ''; // Limpar a tabela
 
             const diasDoMes = obterDiasDoMesAtual();
+            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
+
             diasDoMes.forEach(dia => {
-                let registro = registros[dia.data] || {};
-                adicionarRegistroNaTabela(tabela, registro, dia.data, dia.nomeDoDia, cpf);
+                let registro = registrosOrganizados.find(reg => reg.data === dia.data && reg.cpf === cpf);
+                if (!registro) {
+                    registro = { data: dia.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
+                }
+                adicionarRegistroNaTabela(tabela, registro, dia.nomeDoDia);
             });
         }
 
-        function adicionarRegistroNaTabela(tabela, registro, data, nomeDoDia, cpf) {
+        function adicionarRegistroNaTabela(tabela, registro, nomeDoDia) {
             const novaLinha = tabela.insertRow();
             const celulaData = novaLinha.insertCell(0);
             const celulaEntrada = novaLinha.insertCell(1);
@@ -291,14 +293,27 @@
             const celulaHorasExtras = novaLinha.insertCell(6);
             const celulaAcoes = novaLinha.insertCell(7);
 
-            celulaData.textContent = `${nomeDoDia} - ${data.split('-').reverse().join('/')}`;
-            celulaEntrada.innerHTML = `<input type="time" class="editable" value="${registro.entrada ? extrairHora(registro.entrada) : ''}" data-cpf="${cpf}" data-tipo="entrada" data-data="${data}">`;
-            celulaPausa.innerHTML = `<input type="time" class="editable" value="${registro.pausa ? extrairHora(registro.pausa) : ''}" data-cpf="${cpf}" data-tipo="pausa" data-data="${data}">`;
-            celulaRetorno.innerHTML = `<input type="time" class="editable" value="${registro.retorno ? extrairHora(registro.retorno) : ''}" data-cpf="${cpf}" data-tipo="retorno" data-data="${data}">`;
-            celulaSaida.innerHTML = `<input type="time" class="editable" value="${registro.saida ? extrairHora(registro.saida) : ''}" data-cpf="${cpf}" data-tipo="saida" data-data="${data}">`;
+            celulaData.textContent = `${nomeDoDia} - ${registro.data.split('-').reverse().join('/')}`;
+            celulaEntrada.innerHTML = `<input type="time" class="editable" value="${registro.entrada ? extrairHora(registro.entrada) : ''}" data-cpf="${registro.cpf}" data-tipo="entrada" data-data="${registro.data}">`;
+            celulaPausa.innerHTML = `<input type="time" class="editable" value="${registro.pausa ? extrairHora(registro.pausa) : ''}" data-cpf="${registro.cpf}" data-tipo="pausa" data-data="${registro.data}">`;
+            celulaRetorno.innerHTML = `<input type="time" class="editable" value="${registro.retorno ? extrairHora(registro.retorno) : ''}" data-cpf="${registro.cpf}" data-tipo="retorno" data-data="${registro.data}">`;
+            celulaSaida.innerHTML = `<input type="time" class="editable" value="${registro.saida ? extrairHora(registro.saida) : ''}" data-cpf="${registro.cpf}" data-tipo="saida" data-data="${registro.data}">`;
             celulaHorasTrabalhadas.textContent = calcularHorasTrabalhadas(registro);
             celulaHorasExtras.textContent = calcularHorasExtras(registro);
-            celulaAcoes.innerHTML = `<button onclick="salvarAlteracao('${data}', '${cpf}')">Salvar</button>`;
+            celulaAcoes.innerHTML = `<button onclick="salvarAlteracao('${registro.data}', '${registro.cpf}')">Salvar</button>`;
+        }
+
+        function organizarRegistrosPorData(registros, cpf) {
+            const registrosPorData = {};
+
+            registros.filter(reg => reg.cpf === cpf).forEach(registro => {
+                if (!registrosPorData[registro.data]) {
+                    registrosPorData[registro.data] = { data: registro.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
+                }
+                registrosPorData[registro.data][registro.tipo] = registro.dataHora;
+            });
+
+            return Object.values(registrosPorData);
         }
 
         function obterDiasDoMesAtual() {
@@ -320,50 +335,50 @@
             const cpf = document.getElementById('filterFuncionario').value;
             if (!cpf) return;
 
-            const registrosRef = firebase.database().ref(`/registrosPonto/${cpf}`);
-            registrosRef.once('value').then(snapshot => {
-                const registros = snapshot.val() || {};
-                let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
-                Object.keys(registros).forEach(data => {
-                    const registro = registros[data];
-                    csvContent += `${data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
-                });
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "registros_ponto.csv");
-                document.body.appendChild(link); // Required for FF
-                link.click();
-                document.body.removeChild(link);
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
+            let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
+            registrosOrganizados.forEach(registro => {
+                csvContent += `${registro.data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
             });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "registros_ponto.csv");
+            document.body.appendChild(link); // Required for FF
+            link.click();
+            document.body.removeChild(link);
         }
 
-        async function salvarAlteracao(data, cpf) {
-            const registrosRef = firebase.database().ref(`/registrosPonto/${cpf}/${data}`);
+        function salvarAlteracao(data, cpf) {
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
             const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
-            const registroAtualizado = {};
 
             inputs.forEach(input => {
                 const tipo = input.getAttribute('data-tipo');
                 const valor = input.value;
-                if (valor) {
-                    registroAtualizado[tipo] = `${data} ${valor}`;
+
+                let registro = registros.find(reg => reg.data === data && reg.cpf === cpf && reg.tipo === tipo);
+                if (registro) {
+                    registro.dataHora = valor ? `${data} ${valor}` : '';
+                } else {
+                    registros.push({ data, cpf, tipo, dataHora: valor ? `${data} ${valor}` : '' });
                 }
             });
 
-            await registrosRef.update(registroAtualizado);
+            localStorage.setItem('registrosPonto', JSON.stringify(registros));
             alert('Alterações salvas com sucesso!');
             carregarRegistrosFuncionario();
         }
 
         function limparDados() {
             if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
-                firebase.database().ref('/').set(null).then(() => {
-                    alert('Todos os dados foram limpos.');
-                    carregarFuncionarios();
-                    carregarFiltroFuncionarios();
-                    document.getElementById('registrosTabelaAdmin').innerHTML = '';
-                });
+                localStorage.setItem('funcionarios', JSON.stringify([]));
+                localStorage.setItem('registrosPonto', JSON.stringify([]));
+                alert('Todos os dados foram limpos.');
+                carregarFuncionarios();
+                carregarFiltroFuncionarios();
+                document.getElementById('registrosTabelaAdmin').innerHTML = '';
             }
         }
 
@@ -395,22 +410,6 @@
             }
             return '0.00';
         }
-    </script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js"></script>
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
-            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
-            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com",
-            projectId: "pontoeletronico-f3f30",
-            storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444"
-        };
-
-        const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.database(app);
     </script>
 </body>
 </html>
