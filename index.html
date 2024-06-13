@@ -68,59 +68,9 @@
             width: 100%;
             margin-top: 10px;
         }
-        .history {
-            margin-top: 20px;
-            text-align: left;
-        }
-        .history div {
-            margin-bottom: 10px;
-        }
-        .generate-pdf {
-            margin-top: 20px;
-            display: none;
-        }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
-</head>
-<body>
-    <div class="container">
-        <h1>Sistema de Ponto Eletrônico</h1>
-        <form id="acessoForm">
-            <h2>Acesso ao Registro de Ponto</h2>
-            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
-            <button type="button" onclick="acessarRegistro()">Acessar</button>
-        </form>
-        <div id="registroPonto" style="display: none;">
-            <h3 id="bemVindo"></h3>
-            <div class="buttons">
-                <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
-                    <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
-                    Entrada
-                </div>
-                <div class="button pausa" id="pausa" onclick="registrarPonto('pausa')">
-                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Pausa">
-                    Pausa
-                </div>
-                <div class="button retorno" id="retorno" onclick="registrarPonto('retorno')">
-                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Retorno">
-                    Retorno
-                </div>
-                <div class="button saida" id="saida" onclick="registrarPonto('saida')">
-                    <img src="https://img.icons8.com/material-outlined/50/000000/exit.png" alt="Saída">
-                    Saída
-                </div>
-            </div>
-            <div class="history" id="history">
-                <!-- Histórico de registros será inserido aqui -->
-            </div>
-            <button id="generatePDF" class="generate-pdf" onclick="gerarPDF()">Gerar Comprovante PDF</button>
-        </div>
-        <div>
-            <button onclick="irParaAdmin()">Painel</button>
-        </div>
-    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
@@ -134,7 +84,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
+        
         function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
 
@@ -145,7 +95,6 @@
 
             db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
                 const funcionario = snapshot.val();
-
                 if (!funcionario) {
                     alert('Funcionário não encontrado.');
                     return;
@@ -154,9 +103,8 @@
                 localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
                 document.getElementById('acessoForm').style.display = 'none';
                 document.getElementById('registroPonto').style.display = 'block';
-                document.getElementById('bemVindo').textContent = `Bem-Vinda, ${funcionario.nomeCompleto}`;
+                document.getElementById('welcomeMessage').innerText = `Bem-Vindo(a), ${funcionario.nomeCompleto}`;
                 desativarBotoes();
-                carregarHistorico();
             });
         }
 
@@ -170,19 +118,23 @@
             salvarRegistroLocalmente(registro);
 
             document.getElementById(tipo).classList.add('disabled');
-            document.getElementById('generatePDF').style.display = 'block';
         }
 
         function adicionarRegistroNaTabela(registro) {
-            const historico = document.getElementById('history');
-            const div = document.createElement('div');
-            div.textContent = `${capitalizeFirstLetter(registro.tipo)}: ${registro.dataHora.split(' ')[1]}`;
-            historico.appendChild(div);
+            const tabela = document.getElementById('registrosTabela') || document.createElement('tbody');
+            const novaLinha = tabela.insertRow();
+            const celulaNome = novaLinha.insertCell(0);
+            const celulaTipo = novaLinha.insertCell(1);
+            const celulaDataHora = novaLinha.insertCell(2);
+
+            celulaNome.textContent = registro.nome;
+            celulaTipo.textContent = capitalizeFirstLetter(registro.tipo);
+            celulaDataHora.textContent = registro.dataHora;
         }
 
         function salvarRegistroLocalmente(registro) {
-            const newRegistroRef = db.ref('registrosPonto').push();
-            newRegistroRef.set(registro);
+            const registroRef = db.ref('registrosPonto').push();
+            registroRef.set(registro);
         }
 
         function desativarBotoes() {
@@ -201,48 +153,48 @@
             });
         }
 
-        function carregarHistorico() {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toISOString().split('T')[0];
-
-            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value', (snapshot) => {
-                const registros = snapshot.val();
-                const historico = document.getElementById('history');
-                historico.innerHTML = '';
-
-                for (let key in registros) {
-                    const registro = registros[key];
-                    if (registro.data === dataAtual) {
-                        adicionarRegistroNaTabela(registro);
-                    }
-                }
-            });
-        }
-
-        function irParaAdmin() {
-            window.location.href = 'admin.html';
-        }
-
         function capitalizeFirstLetter(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
 
-        function gerarPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toLocaleDateString();
-            const registros = document.getElementById('history').innerText;
-
-            doc.text(`Comprovante de Registro de Ponto`, 10, 10);
-            doc.text(`Funcionário: ${funcionario.nomeCompleto}`, 10, 20);
-            doc.text(`CPF: ${funcionario.cpf}`, 10, 30);
-            doc.text(`Data: ${dataAtual}`, 10, 40);
-            doc.text(`Registros:`, 10, 50);
-            doc.text(registros, 10, 60);
-
-            doc.save(`comprovante_${dataAtual}.pdf`);
+        function irParaAdmin() {
+            window.location.href = "admin.html";
         }
     </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Sistema de Ponto Eletrônico</h1>
+        <form id="acessoForm">
+            <h2>Acesso ao Registro de Ponto</h2>
+            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
+            <button type="button" onclick="acessarRegistro()">Acessar</button>
+            <button type="button" onclick="irParaAdmin()">Painel</button>
+        </form>
+        <div id="registroPonto" style="display: none;">
+            <p id="welcomeMessage"></p>
+            <div class="buttons">
+                <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
+                    Entrada
+                </div>
+                <div class="button pausa" id="pausa" onclick="registrarPonto('pausa')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Pausa">
+                    Pausa
+                </div>
+                <div class="button retorno" id="retorno" onclick="registrarPonto('retorno')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Retorno">
+                    Retorno
+                </div>
+                <div class="button saida" id="saida" onclick="registrarPonto('saida')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/exit.png" alt="Saída">
+                    Saída
+                </div>
+            </div>
+            <div id="history">
+                <!-- Histórico de registros será inserido aqui -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>
