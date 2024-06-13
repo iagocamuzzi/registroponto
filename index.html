@@ -84,7 +84,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        
+
         function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
 
@@ -93,8 +93,9 @@
                 return;
             }
 
-            db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
+            db.ref('funcionarios/' + cpf).once('value').then(snapshot => {
                 const funcionario = snapshot.val();
+
                 if (!funcionario) {
                     alert('Funcionário não encontrado.');
                     return;
@@ -103,7 +104,6 @@
                 localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
                 document.getElementById('acessoForm').style.display = 'none';
                 document.getElementById('registroPonto').style.display = 'block';
-                document.getElementById('welcomeMessage').innerText = `Bem-Vindo(a), ${funcionario.nomeCompleto}`;
                 desativarBotoes();
             });
         }
@@ -114,10 +114,12 @@
             const data = new Date().toISOString().split('T')[0];
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
 
-            adicionarRegistroNaTabela(registro);
-            salvarRegistroLocalmente(registro);
-
-            document.getElementById(tipo).classList.add('disabled');
+            const registroRef = db.ref('registrosPonto').push();
+            registroRef.set(registro).then(() => {
+                adicionarRegistroNaTabela(registro);
+                document.getElementById(tipo).classList.add('disabled');
+                alert('Ponto registrado com sucesso!');
+            });
         }
 
         function adicionarRegistroNaTabela(registro) {
@@ -132,33 +134,28 @@
             celulaDataHora.textContent = registro.dataHora;
         }
 
-        function salvarRegistroLocalmente(registro) {
-            const registroRef = db.ref('registrosPonto').push();
-            registroRef.set(registro);
-        }
-
         function desativarBotoes() {
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
             const dataAtual = new Date().toISOString().split('T')[0];
-            const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
 
-            botoes.forEach(botao => {
-                const btnElement = document.getElementById(botao);
-                const registro = registros.find(reg => reg.tipo === botao && reg.cpf === JSON.parse(localStorage.getItem('funcionarioLogado')).cpf && reg.data === dataAtual);
-                if (registro) {
-                    btnElement.classList.add('disabled');
-                } else {
-                    btnElement.classList.remove('disabled');
-                }
+            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value').then(snapshot => {
+                const registros = snapshot.val() || {};
+                const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+
+                botoes.forEach(botao => {
+                    const btnElement = document.getElementById(botao);
+                    const registroExistente = Object.values(registros).find(reg => reg.tipo === botao && reg.data === dataAtual);
+                    if (registroExistente) {
+                        btnElement.classList.add('disabled');
+                    } else {
+                        btnElement.classList.remove('disabled');
+                    }
+                });
             });
         }
 
         function capitalizeFirstLetter(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
-        }
-
-        function irParaAdmin() {
-            window.location.href = "admin.html";
         }
     </script>
 </head>
@@ -169,10 +166,11 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <button type="button" onclick="irParaAdmin()">Painel</button>
+            <div class="button" id="painelButton" onclick="irParaAdmin()">
+                Painel
+            </div>
         </form>
         <div id="registroPonto" style="display: none;">
-            <p id="welcomeMessage"></p>
             <div class="buttons">
                 <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
                     <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
@@ -191,10 +189,12 @@
                     Saída
                 </div>
             </div>
-            <div id="history">
-                <!-- Histórico de registros será inserido aqui -->
-            </div>
         </div>
     </div>
+    <script>
+        function irParaAdmin() {
+            window.location.href = "admin.html";
+        }
+    </script>
 </body>
 </html>
