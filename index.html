@@ -219,7 +219,11 @@
             dbRef.get().then(snapshot => {
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 registros[registro.tipo] = registro.dataHora;
-                dbRef.set(registros);
+                dbRef.set(registros).then(() => {
+                    if (registro.tipo === 'saida') {
+                        calcularTotalHorasTrabalhadas();
+                    }
+                });
             });
         }
 
