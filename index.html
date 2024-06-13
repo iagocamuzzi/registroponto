@@ -6,8 +6,8 @@
     <title>Sistema de Ponto Eletrônico</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -16,19 +16,22 @@
         }
         .container {
             background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 80%;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 90%;
             max-width: 500px;
+            text-align: center;
         }
         h1 {
-            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
         }
         .buttons {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 15px;
             justify-content: center;
         }
         .button {
@@ -38,40 +41,51 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            border-radius: 10px;
             color: white;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            opacity: 1;
-            transition: opacity 0.3s;
+            transition: all 0.3s ease;
         }
-        .entrada { background-color: #4CAF50; }
-        .pausa { background-color: #FFC107; }
-        .retorno { background-color: #FF9800; }
-        .saida { background-color: #F44336; }
         .button img {
             width: 50px;
             height: 50px;
             margin-bottom: 10px;
         }
-        .disabled {
-            opacity: 0.5;
-            pointer-events: none;
+        .button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
         }
+        .entrada { background-color: #4caf50; }
+        .pausa { background-color: #ffc107; }
+        .retorno { background-color: #ff9800; }
+        .saida { background-color: #f44336; }
         form {
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
         input, button {
-            padding: 10px;
+            padding: 12px;
             font-size: 16px;
-            width: 100%;
-            margin-top: 10px;
+            width: calc(100% - 24px);
+            margin-top: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
         #nomeFuncionario {
             margin-bottom: 20px;
             font-size: 18px;
-            text-align: center;
+            color: #555;
         }
         .admin-button {
             margin-top: 20px;
@@ -105,15 +119,6 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        #totalHoras {
-            margin-top: 20px;
-            font-size: 16px;
-            text-align: center;
-        }
-        #senhaAdmin {
-            display: none;
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
@@ -123,9 +128,7 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="mostrarSenhaAdmin()">Painel</div>
-            <input type="password" id="senhaAdmin" placeholder="Senha do Administrador">
-            <button type="button" id="botaoAdmin" style="display:none;" onclick="verificarSenha()">Entrar</button>
+            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
         </form>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
@@ -158,7 +161,7 @@
                     <!-- Registros do dia serão inseridos aqui -->
                 </tbody>
             </table>
-            <div id="totalHoras">Total de horas trabalhadas: 0</div>
+            <div id="totalHoras" style="margin-top: 20px; font-size: 16px; color: #555;"></div>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
     </div>
@@ -167,13 +170,13 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
-            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
-            projectId: "pontoeletronico-f3f30",
-            storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444",
-            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
+            apiKey: "API_KEY",
+            authDomain: "PROJECT_ID.firebaseapp.com",
+            projectId: "PROJECT_ID",
+            storageBucket: "PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID",
+            databaseURL: "https://PROJECT_ID.firebaseio.com"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -217,7 +220,6 @@
             if (tipo === 'saida') {
                 document.getElementById('gerarPDF').style.display = 'block';
             }
-            atualizarTotalHoras();
         }
 
         function salvarRegistroLocalmente(registro) {
@@ -263,7 +265,7 @@
                         celulaHorario.textContent = registros[tipo].split(' ')[1];
                     });
                     document.getElementById('tabelaRegistros').style.display = 'table';
-                    atualizarTotalHoras();
+                    calcularTotalHoras(registros);
                 }
             });
         }
@@ -278,29 +280,20 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        function atualizarTotalHoras() {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toISOString().split('T')[0];
-            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
-            dbRef.get().then(snapshot => {
-                if (snapshot.exists()) {
-                    const registros = snapshot.val();
-                    const entrada = registros.entrada ? new Date(registros.entrada) : null;
-                    const pausa = registros.pausa ? new Date(registros.pausa) : null;
-                    const retorno = registros.retorno ? new Date(registros.retorno) : null;
-                    const saida = registros.saida ? new Date(registros.saida) : null;
+        function calcularTotalHoras(registros) {
+            const entrada = registros.entrada ? new Date(`1970-01-01T${registros.entrada.split(' ')[1]}`) : null;
+            const pausa = registros.pausa ? new Date(`1970-01-01T${registros.pausa.split(' ')[1]}`) : null;
+            const retorno = registros.retorno ? new Date(`1970-01-01T${registros.retorno.split(' ')[1]}`) : null;
+            const saida = registros.saida ? new Date(`1970-01-01T${registros.saida.split(' ')[1]}`) : null;
 
-                    if (entrada && saida) {
-                        let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
-                        if (pausa && retorno) {
-                            horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
-                        }
-                        document.getElementById('totalHoras').innerText = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)}`;
-                    } else {
-                        document.getElementById('totalHoras').innerText = 'Total de horas trabalhadas: 0';
-                    }
+            let horasTrabalhadas = 0;
+            if (entrada && saida) {
+                horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                if (pausa && retorno) {
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
                 }
-            });
+            }
+            document.getElementById('totalHoras').textContent = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)}`;
         }
 
         function gerarPDF() {
@@ -324,31 +317,22 @@
                 y += 10;
             }
 
-            const totalHoras = document.getElementById('totalHoras').innerText;
-            doc.text(totalHoras, 20, y + 10);
-
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        function mostrarSenhaAdmin() {
-            document.getElementById('senhaAdmin').style.display = 'block';
-            document.getElementById('botaoAdmin').style.display = 'block';
-        }
-
-        function verificarSenha() {
-            const senha = document.getElementById('senhaAdmin').value;
-            if (senha === '021092') {
+        function irParaAdmin() {
+            const senha = prompt("Digite a senha de administrador:");
+            if (senha === "021092") {
                 window.location.href = 'admin.html';
             } else {
-                alert('Senha incorreta!');
+                alert("Senha incorreta.");
             }
         }
 
         window.acessarRegistro = acessarRegistro;
         window.registrarPonto = registrarPonto;
         window.gerarPDF = gerarPDF;
-        window.mostrarSenhaAdmin = mostrarSenhaAdmin;
-        window.verificarSenha = verificarSenha;
+        window.irParaAdmin = irParaAdmin;
     </script>
 </body>
 </html>
