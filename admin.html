@@ -88,82 +88,8 @@
             background-color: transparent;
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-</head>
-<body>
-    <div class="sidebar">
-        <a href="#" onclick="toggleSubmenu('cadastroSubmenu')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/user.png"/> Cadastrar
-        </a>
-        <div id="cadastroSubmenu" class="submenu">
-            <a href="#" onclick="showSection('novoCadastro')">Novo Cadastro</a>
-            <a href="#" onclick="showSection('consultarCadastro')">Consultar</a>
-        </div>
-        <a href="#" onclick="showSection('relatorios')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
-        </a>
-    </div>
-    <div class="container">
-        <h1>Administração de Pontos</h1>
-        <div id="novoCadastro" class="section">
-            <form id="cadastroForm">
-                <h2>Cadastro de Funcionário</h2>
-                <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
-                <input type="text" id="cpfCadastro" placeholder="CPF" required>
-                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
-                <input type="email" id="emailCadastro" placeholder="Email" required>
-                <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
-                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
-                <input type="number" id="salarioCadastro" placeholder="Salário" required>
-                <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
-            </form>
-        </div>
-        <div id="consultarCadastro" class="section">
-            <h2>Consultar Funcionário</h2>
-            <table id="tabelaFuncionarios">
-                <thead>
-                    <tr>
-                        <th>Nome Completo</th>
-                        <th>CPF</th>
-                        <th>Detalhes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Lista de funcionários será inserida aqui -->
-                </tbody>
-            </table>
-            <div id="detalhesFuncionario"></div>
-        </div>
-        <div id="relatorios" class="section">
-            <div class="filter">
-                <label for="filterFuncionario">Selecionar Funcionário:</label>
-                <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
-                    <option value="">Selecione um funcionário</option>
-                </select>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Entrada</th>
-                        <th>Pausa</th>
-                        <th>Retorno</th>
-                        <th>Saída</th>
-                        <th>Horas Trabalhadas</th>
-                        <th>Horas Extras</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="registrosTabelaAdmin">
-                    <!-- Registros serão inseridos aqui -->
-                </tbody>
-            </table>
-            <div class="admin-buttons">
-                <button onclick="limparDados()">Limpar Todos os Dados</button>
-            </div>
-        </div>
-    </div>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
@@ -207,17 +133,12 @@
                 return;
             }
 
-            let funcionariosRef = db.ref('funcionarios/' + cpf);
-            funcionariosRef.set({ nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario })
-                .then(() => {
-                    alert('Funcionário cadastrado com sucesso!');
-                    document.getElementById('cadastroForm').reset();
-                    carregarFuncionarios();
-                    carregarFiltroFuncionarios();
-                })
-                .catch((error) => {
-                    console.error('Erro ao cadastrar funcionário:', error);
-                });
+            const funcionarioRef = db.ref('funcionarios/' + cpf);
+            funcionarioRef.set({ nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
+            alert('Funcionário cadastrado com sucesso!');
+            document.getElementById('cadastroForm').reset();
+            carregarFuncionarios();
+            carregarFiltroFuncionarios();
         }
 
         function carregarFuncionarios() {
@@ -362,22 +283,22 @@
         }
 
         function salvarAlteracao(data, cpf) {
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
             const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
 
             inputs.forEach(input => {
                 const tipo = input.getAttribute('data-tipo');
                 const valor = input.value;
-                const registroRef = db.ref('registrosPonto').orderByChild('cpf').equalTo(cpf).once('value', (snapshot) => {
-                    const registros = snapshot.val();
-                    for (let key in registros) {
-                        const registro = registros[key];
-                        if (registro.data === data && registro.tipo === tipo) {
-                            db.ref('registrosPonto/' + key).update({ dataHora: valor ? `${data} ${valor}` : '' });
-                        }
-                    }
-                });
+
+                let registro = registros.find(reg => reg.data === data && reg.cpf === cpf && reg.tipo === tipo);
+                if (registro) {
+                    registro.dataHora = valor ? `${data} ${valor}` : '';
+                } else {
+                    registros.push({ data, cpf, tipo, dataHora: valor ? `${data} ${valor}` : '' });
+                }
             });
 
+            localStorage.setItem('registrosPonto', JSON.stringify(registros));
             alert('Alterações salvas com sucesso!');
             carregarRegistrosFuncionario();
         }
@@ -422,5 +343,79 @@
             return '0.00';
         }
     </script>
+</head>
+<body>
+    <div class="sidebar">
+        <a href="#" onclick="toggleSubmenu('cadastroSubmenu')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/user.png"/> Cadastrar
+        </a>
+        <div id="cadastroSubmenu" class="submenu">
+            <a href="#" onclick="showSection('novoCadastro')">Novo Cadastro</a>
+            <a href="#" onclick="showSection('consultarCadastro')">Consultar</a>
+        </div>
+        <a href="#" onclick="showSection('relatorios')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
+        </a>
+    </div>
+    <div class="container">
+        <h1>Administração de Pontos</h1>
+        <div id="novoCadastro" class="section">
+            <form id="cadastroForm">
+                <h2>Cadastro de Funcionário</h2>
+                <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
+                <input type="text" id="cpfCadastro" placeholder="CPF" required>
+                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
+                <input type="email" id="emailCadastro" placeholder="Email" required>
+                <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
+                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
+                <input type="number" id="salarioCadastro" placeholder="Salário" required>
+                <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
+            </form>
+        </div>
+        <div id="consultarCadastro" class="section">
+            <h2>Consultar Funcionário</h2>
+            <table id="tabelaFuncionarios">
+                <thead>
+                    <tr>
+                        <th>Nome Completo</th>
+                        <th>CPF</th>
+                        <th>Detalhes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Lista de funcionários será inserida aqui -->
+                </tbody>
+            </table>
+            <div id="detalhesFuncionario"></div>
+        </div>
+        <div id="relatorios" class="section">
+            <div class="filter">
+                <label for="filterFuncionario">Selecionar Funcionário:</label>
+                <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
+                    <option value="">Selecione um funcionário</option>
+                </select>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Entrada</th>
+                        <th>Pausa</th>
+                        <th>Retorno</th>
+                        <th>Saída</th>
+                        <th>Horas Trabalhadas</th>
+                        <th>Horas Extras</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="registrosTabelaAdmin">
+                    <!-- Registros serão inseridos aqui -->
+                </tbody>
+            </table>
+            <div class="admin-buttons">
+                <button onclick="limparDados()">Limpar Todos os Dados</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
