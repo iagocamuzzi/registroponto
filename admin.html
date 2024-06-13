@@ -87,6 +87,26 @@
             border: none;
             background-color: transparent;
         }
+        .status-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .status-column {
+            flex: 1;
+            margin: 0 10px;
+        }
+        .status-column h2 {
+            text-align: center;
+        }
+        .status-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .status-list li {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
@@ -100,6 +120,9 @@
         </div>
         <a href="#" onclick="showSection('relatorios')">
             <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
+        </a>
+        <a href="#" onclick="showSection('dashboard')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/monitor.png"/> Dashboard
         </a>
     </div>
     <div class="container">
@@ -160,10 +183,26 @@
                 <button onclick="limparDados()">Limpar Todos os Dados</button>
             </div>
         </div>
+        <div id="dashboard" class="section">
+            <div class="status-container">
+                <div class="status-column">
+                    <h2>Presentes</h2>
+                    <ul id="presentesList" class="status-list"></ul>
+                </div>
+                <div class="status-column">
+                    <h2>Em Pausa</h2>
+                    <ul id="pausaList" class="status-list"></ul>
+                </div>
+                <div class="status-column">
+                    <h2>Saída</h2>
+                    <ul id="saidaList" class="status-list"></ul>
+                </div>
+            </div>
+        </div>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, get, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
@@ -181,6 +220,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             carregarFuncionarios();
             carregarFiltroFuncionarios();
+            atualizarDashboard();
         });
 
         function toggleSubmenu(submenuId) {
@@ -388,6 +428,68 @@
                 return horasTrabalhadas.toFixed(2); // Retornar com 2 casas decimais
             }
             return '';
+        }
+
+        function atualizarDashboard() {
+            const presentesList = document.getElementById('presentesList');
+            const pausaList = document.getElementById('pausaList');
+            const saidaList = document.getElementById('saidaList');
+
+            onValue(ref(db, 'registros'), snapshot => {
+                const registros = snapshot.val();
+                const dataAtual = new Date().toISOString().split('T')[0];
+
+                const presentes = [];
+                const emPausa = [];
+                const emSaida = [];
+
+                if (registros) {
+                    Object.keys(registros).forEach(cpf => {
+                        const registro = registros[cpf][dataAtual];
+                        if (registro) {
+                            if (registro.saida) {
+                                emSaida.push(cpf);
+                            } else if (registro.retorno && !registro.saida) {
+                                presentes.push(cpf);
+                            } else if (registro.pausa && !registro.retorno) {
+                                emPausa.push(cpf);
+                            } else if (registro.entrada && !registro.pausa && !registro.retorno && !registro.saida) {
+                                presentes.push(cpf);
+                            }
+                        }
+                    });
+                }
+
+                presentesList.innerHTML = '';
+                pausaList.innerHTML = '';
+                saidaList.innerHTML = '';
+
+                presentes.forEach(cpf => {
+                    const funcionario = getFuncionario(cpf);
+                    if (funcionario) {
+                        presentesList.innerHTML += `<li>${funcionario.nomeCompleto}</li>`;
+                    }
+                });
+
+                emPausa.forEach(cpf => {
+                    const funcionario = getFuncionario(cpf);
+                    if (funcionario) {
+                        pausaList.innerHTML += `<li>${funcionario.nomeCompleto}</li>`;
+                    }
+                });
+
+                emSaida.forEach(cpf => {
+                    const funcionario = getFuncionario(cpf);
+                    if (funcionario) {
+                        saidaList.innerHTML += `<li>${funcionario.nomeCompleto}</li>`;
+                    }
+                });
+            });
+        }
+
+        function getFuncionario(cpf) {
+            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+            return funcionarios.find(funcionario => funcionario.cpf === cpf);
         }
 
         window.toggleSubmenu = toggleSubmenu;
