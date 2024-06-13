@@ -149,7 +149,6 @@
                         <th>Retorno</th>
                         <th>Saída</th>
                         <th>Horas Trabalhadas</th>
-                        <th>Horas Extras</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -162,7 +161,23 @@
             </div>
         </div>
     </div>
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
+            projectId: "pontoeletronico-f3f30",
+            storageBucket: "pontoeletronico-f3f30.appspot.com",
+            messagingSenderId: "211959704845",
+            appId: "1:211959704845:web:933e082e07312c67165444",
+            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
         document.addEventListener('DOMContentLoaded', () => {
             carregarFuncionarios();
             carregarFiltroFuncionarios();
@@ -178,7 +193,7 @@
             document.getElementById(sectionId).classList.add('active');
         }
 
-        function cadastrarFuncionario() {
+        async function cadastrarFuncionario() {
             const nomeCompleto = document.getElementById('nomeCompletoCadastro').value.trim();
             const cpf = document.getElementById('cpfCadastro').value.trim();
             const dataNascimento = document.getElementById('dataNascimentoCadastro').value;
@@ -192,61 +207,69 @@
                 return;
             }
 
-            let funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-            if (funcionarios.find(func => func.cpf === cpf)) {
-                alert('Funcionário já cadastrado com esse CPF.');
-                return;
-            }
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
 
-            funcionarios.push({ nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
-            localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
             alert('Funcionário cadastrado com sucesso!');
             document.getElementById('cadastroForm').reset();
             carregarFuncionarios();
             carregarFiltroFuncionarios();
         }
 
-        function carregarFuncionarios() {
-            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+        async function carregarFuncionarios() {
+            const dbRef = ref(db, 'funcionarios');
+            const snapshot = await get(dbRef);
+
             const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
             tabelaFuncionarios.innerHTML = ''; // Limpar a tabela
 
-            funcionarios.forEach(funcionario => {
-                const novaLinha = tabelaFuncionarios.insertRow();
-                const celulaNomeCompleto = novaLinha.insertCell(0);
-                const celulaCpf = novaLinha.insertCell(1);
-                const celulaDetalhes = novaLinha.insertCell(2);
+            if (snapshot.exists()) {
+                const funcionarios = snapshot.val();
+                Object.keys(funcionarios).forEach(cpf => {
+                    const funcionario = funcionarios[cpf];
+                    const novaLinha = tabelaFuncionarios.insertRow();
+                    const celulaNomeCompleto = novaLinha.insertCell(0);
+                    const celulaCpf = novaLinha.insertCell(1);
+                    const celulaDetalhes = novaLinha.insertCell(2);
 
-                celulaNomeCompleto.textContent = funcionario.nomeCompleto;
-                celulaCpf.textContent = funcionario.cpf;
-                celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
-            });
+                    celulaNomeCompleto.textContent = funcionario.nomeCompleto;
+                    celulaCpf.textContent = funcionario.cpf;
+                    celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
+                });
+            }
         }
 
-        function carregarFiltroFuncionarios() {
-            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+        async function carregarFiltroFuncionarios() {
+            const dbRef = ref(db, 'funcionarios');
+            const snapshot = await get(dbRef);
+
             const filtroFuncionario = document.getElementById('filterFuncionario');
             filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
 
-            funcionarios.forEach(funcionario => {
-                const option = document.createElement('option');
-                option.value = funcionario.cpf;
-                option.textContent = funcionario.nomeCompleto;
-                filtroFuncionario.appendChild(option);
-            });
+            if (snapshot.exists()) {
+                const funcionarios = snapshot.val();
+                Object.keys(funcionarios).forEach(cpf => {
+                    const funcionario = funcionarios[cpf];
+                    const option = document.createElement('option');
+                    option.value = funcionario.cpf;
+                    option.textContent = funcionario.nomeCompleto;
+                    filtroFuncionario.appendChild(option);
+                });
+            }
         }
 
-        function verDetalhesFuncionario(cpf) {
-            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-            const funcionario = funcionarios.find(func => func.cpf === cpf);
+        async function verDetalhesFuncionario(cpf) {
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
             const detalhesFuncionario = document.getElementById('detalhesFuncionario');
             detalhesFuncionario.innerHTML = '';
 
-            if (!funcionario) {
+            if (!snapshot.exists()) {
                 detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
                 return;
             }
 
+            const funcionario = snapshot.val();
             detalhesFuncionario.innerHTML = `
                 <h3>Detalhes do Funcionário</h3>
                 <p><strong>Nome Completo:</strong> ${funcionario.nomeCompleto}</p>
@@ -259,61 +282,26 @@
             `;
         }
 
-        function carregarRegistrosFuncionario() {
+        async function carregarRegistrosFuncionario() {
             const cpf = document.getElementById('filterFuncionario').value;
             if (!cpf) {
                 document.getElementById('registrosTabelaAdmin').innerHTML = '';
                 return;
             }
 
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const dbRef = ref(db, `registros/${cpf}`);
+            const snapshot = await get(dbRef);
+
             const tabela = document.getElementById('registrosTabelaAdmin');
             tabela.innerHTML = ''; // Limpar a tabela
 
             const diasDoMes = obterDiasDoMesAtual();
-            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
+            const registros = snapshot.exists() ? snapshot.val() : {};
 
             diasDoMes.forEach(dia => {
-                let registro = registrosOrganizados.find(reg => reg.data === dia.data && reg.cpf === cpf);
-                if (!registro) {
-                    registro = { data: dia.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
-                }
-                adicionarRegistroNaTabela(tabela, registro, dia.nomeDoDia);
+                const registro = registros[dia] || { entrada: '', pausa: '', retorno: '', saida: '' };
+                adicionarRegistroNaTabela(tabela, { data: dia, ...registro, cpf });
             });
-        }
-
-        function adicionarRegistroNaTabela(tabela, registro, nomeDoDia) {
-            const novaLinha = tabela.insertRow();
-            const celulaData = novaLinha.insertCell(0);
-            const celulaEntrada = novaLinha.insertCell(1);
-            const celulaPausa = novaLinha.insertCell(2);
-            const celulaRetorno = novaLinha.insertCell(3);
-            const celulaSaida = novaLinha.insertCell(4);
-            const celulaHorasTrabalhadas = novaLinha.insertCell(5);
-            const celulaHorasExtras = novaLinha.insertCell(6);
-            const celulaAcoes = novaLinha.insertCell(7);
-
-            celulaData.textContent = `${nomeDoDia} - ${registro.data.split('-').reverse().join('/')}`;
-            celulaEntrada.innerHTML = `<input type="time" class="editable" value="${registro.entrada ? extrairHora(registro.entrada) : ''}" data-cpf="${registro.cpf}" data-tipo="entrada" data-data="${registro.data}">`;
-            celulaPausa.innerHTML = `<input type="time" class="editable" value="${registro.pausa ? extrairHora(registro.pausa) : ''}" data-cpf="${registro.cpf}" data-tipo="pausa" data-data="${registro.data}">`;
-            celulaRetorno.innerHTML = `<input type="time" class="editable" value="${registro.retorno ? extrairHora(registro.retorno) : ''}" data-cpf="${registro.cpf}" data-tipo="retorno" data-data="${registro.data}">`;
-            celulaSaida.innerHTML = `<input type="time" class="editable" value="${registro.saida ? extrairHora(registro.saida) : ''}" data-cpf="${registro.cpf}" data-tipo="saida" data-data="${registro.data}">`;
-            celulaHorasTrabalhadas.textContent = calcularHorasTrabalhadas(registro);
-            celulaHorasExtras.textContent = calcularHorasExtras(registro);
-            celulaAcoes.innerHTML = `<button onclick="salvarAlteracao('${registro.data}', '${registro.cpf}')">Salvar</button>`;
-        }
-
-        function organizarRegistrosPorData(registros, cpf) {
-            const registrosPorData = {};
-
-            registros.filter(reg => reg.cpf === cpf).forEach(registro => {
-                if (!registrosPorData[registro.data]) {
-                    registrosPorData[registro.data] = { data: registro.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
-                }
-                registrosPorData[registro.data][registro.tipo] = registro.dataHora;
-            });
-
-            return Object.values(registrosPorData);
         }
 
         function obterDiasDoMesAtual() {
@@ -324,57 +312,56 @@
 
             for (let dia = 1; dia <= new Date(ano, mes + 1, 0).getDate(); dia++) {
                 const data = new Date(ano, mes, dia);
-                const nomeDoDia = data.toLocaleDateString('pt-BR', { weekday: 'long' });
-                diasDoMes.push({ data: data.toISOString().split('T')[0], nomeDoDia });
+                diasDoMes.push(data.toISOString().split('T')[0]);
             }
 
             return diasDoMes;
         }
 
-        function gerarRelatorio() {
-            const cpf = document.getElementById('filterFuncionario').value;
-            if (!cpf) return;
+        function adicionarRegistroNaTabela(tabela, registro) {
+            const novaLinha = tabela.insertRow();
+            const celulaData = novaLinha.insertCell(0);
+            const celulaEntrada = novaLinha.insertCell(1);
+            const celulaPausa = novaLinha.insertCell(2);
+            const celulaRetorno = novaLinha.insertCell(3);
+            const celulaSaida = novaLinha.insertCell(4);
+            const celulaHorasTrabalhadas = novaLinha.insertCell(5);
+            const celulaAcoes = novaLinha.insertCell(6);
 
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
-            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
-            let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
-            registrosOrganizados.forEach(registro => {
-                csvContent += `${registro.data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "registros_ponto.csv");
-            document.body.appendChild(link); // Required for FF
-            link.click();
-            document.body.removeChild(link);
+            celulaData.textContent = `${registro.data.split('-').reverse().join('/')}`;
+            celulaEntrada.innerHTML = `<input type="time" class="editable" value="${registro.entrada ? extrairHora(registro.entrada) : ''}" data-cpf="${registro.cpf}" data-tipo="entrada" data-data="${registro.data}">`;
+            celulaPausa.innerHTML = `<input type="time" class="editable" value="${registro.pausa ? extrairHora(registro.pausa) : ''}" data-cpf="${registro.cpf}" data-tipo="pausa" data-data="${registro.data}">`;
+            celulaRetorno.innerHTML = `<input type="time" class="editable" value="${registro.retorno ? extrairHora(registro.retorno) : ''}" data-cpf="${registro.cpf}" data-tipo="retorno" data-data="${registro.data}">`;
+            celulaSaida.innerHTML = `<input type="time" class="editable" value="${registro.saida ? extrairHora(registro.saida) : ''}" data-cpf="${registro.cpf}" data-tipo="saida" data-data="${registro.data}">`;
+            celulaHorasTrabalhadas.textContent = calcularHorasTrabalhadas(registro);
+            celulaAcoes.innerHTML = `<button onclick="salvarAlteracao('${registro.data}', '${registro.cpf}')">Salvar</button>`;
         }
 
-        function salvarAlteracao(data, cpf) {
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+        async function salvarAlteracao(data, cpf) {
             const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
 
+            const registroAtualizado = {};
             inputs.forEach(input => {
                 const tipo = input.getAttribute('data-tipo');
                 const valor = input.value;
-
-                let registro = registros.find(reg => reg.data === data && reg.cpf === cpf && reg.tipo === tipo);
-                if (registro) {
-                    registro.dataHora = valor ? `${data} ${valor}` : '';
-                } else {
-                    registros.push({ data, cpf, tipo, dataHora: valor ? `${data} ${valor}` : '' });
-                }
+                registroAtualizado[tipo] = valor ? `${data} ${valor}` : '';
             });
 
-            localStorage.setItem('registrosPonto', JSON.stringify(registros));
+            const dbRef = ref(db, `registros/${cpf}/${data}`);
+            await set(dbRef, registroAtualizado);
+
             alert('Alterações salvas com sucesso!');
             carregarRegistrosFuncionario();
         }
 
-        function limparDados() {
+        async function limparDados() {
             if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
-                localStorage.setItem('funcionarios', JSON.stringify([]));
-                localStorage.setItem('registrosPonto', JSON.stringify([]));
+                const dbRefFuncionarios = ref(db, 'funcionarios');
+                const dbRefRegistros = ref(db, 'registros');
+
+                await remove(dbRefFuncionarios);
+                await remove(dbRefRegistros);
+
                 alert('Todos os dados foram limpos.');
                 carregarFuncionarios();
                 carregarFiltroFuncionarios();
@@ -403,13 +390,15 @@
             return '';
         }
 
-        function calcularHorasExtras(registro) {
-            const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-            if (horasTrabalhadas > 8) {
-                return (horasTrabalhadas - 8).toFixed(2); // Subtrair 8 horas e retornar com 2 casas decimais
-            }
-            return '0.00';
-        }
+        window.toggleSubmenu = toggleSubmenu;
+        window.showSection = showSection;
+        window.cadastrarFuncionario = cadastrarFuncionario;
+        window.carregarFuncionarios = carregarFuncionarios;
+        window.carregarFiltroFuncionarios = carregarFiltroFuncionarios;
+        window.verDetalhesFuncionario = verDetalhesFuncionario;
+        window.carregarRegistrosFuncionario = carregarRegistrosFuncionario;
+        window.salvarAlteracao = salvarAlteracao;
+        window.limparDados = limparDados;
     </script>
 </body>
 </html>
