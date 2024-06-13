@@ -105,6 +105,11 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        .total-horas {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -112,7 +117,7 @@
         <h1>Sistema de Ponto Eletrônico</h1>
         <form id="acessoForm">
             <h2>Acesso ao Registro de Ponto</h2>
-            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required inputmode="numeric" pattern="\d*">
+            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
             <div class="admin-button" onclick="irParaAdmin()">Painel</div>
         </form>
@@ -147,7 +152,7 @@
                     <!-- Registros do dia serão inseridos aqui -->
                 </tbody>
             </table>
-            <div id="totalHoras" style="margin-top: 20px; font-size: 16px; color: #555;"></div>
+            <div id="totalHoras" class="total-horas" style="display: none;"></div>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
     </div>
@@ -205,6 +210,7 @@
 
             if (tipo === 'saida') {
                 document.getElementById('gerarPDF').style.display = 'block';
+                calcularTotalHorasTrabalhadas();
             }
         }
 
@@ -251,7 +257,7 @@
                         celulaHorario.textContent = registros[tipo].split(' ')[1];
                     });
                     document.getElementById('tabelaRegistros').style.display = 'table';
-                    calcularTotalHoras(registros);
+                    calcularTotalHorasTrabalhadas();
                 }
             });
         }
@@ -266,20 +272,29 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        function calcularTotalHoras(registros) {
-            const entrada = registros.entrada ? new Date(`1970-01-01T${registros.entrada.split(' ')[1]}`) : null;
-            const pausa = registros.pausa ? new Date(`1970-01-01T${registros.pausa.split(' ')[1]}`) : null;
-            const retorno = registros.retorno ? new Date(`1970-01-01T${registros.retorno.split(' ')[1]}`) : null;
-            const saida = registros.saida ? new Date(`1970-01-01T${registros.saida.split(' ')[1]}`) : null;
+        function calcularTotalHorasTrabalhadas() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
+            dbRef.get().then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    const entrada = registros.entrada ? new Date(`1970-01-01T${registros.entrada.split(' ')[1]}`) : null;
+                    const pausa = registros.pausa ? new Date(`1970-01-01T${registros.pausa.split(' ')[1]}`) : null;
+                    const retorno = registros.retorno ? new Date(`1970-01-01T${registros.retorno.split(' ')[1]}`) : null;
+                    const saida = registros.saida ? new Date(`1970-01-01T${registros.saida.split(' ')[1]}`) : null;
 
-            let horasTrabalhadas = 0;
-            if (entrada && saida) {
-                horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
-                if (pausa && retorno) {
-                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                    let horasTrabalhadas = 0;
+                    if (entrada && saida) {
+                        horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                        if (pausa && retorno) {
+                            horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                        }
+                    }
+                    document.getElementById('totalHoras').innerText = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)}`;
+                    document.getElementById('totalHoras').style.display = 'block';
                 }
-            }
-            document.getElementById('totalHoras').textContent = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)}`;
+            });
         }
 
         function gerarPDF() {
@@ -307,12 +322,7 @@
         }
 
         function irParaAdmin() {
-            const senha = prompt("Digite a senha de administrador:", "");
-            if (senha === "021092") {
-                window.location.href = 'admin.html';
-            } else {
-                alert("Senha incorreta.");
-            }
+            window.location.href = 'admin.html';
         }
 
         window.acessarRegistro = acessarRegistro;
