@@ -88,7 +88,6 @@
             background-color: transparent;
         }
     </style>
-    <!-- Adicione os scripts do Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
 </head>
@@ -166,7 +165,6 @@
         </div>
     </div>
     <script>
-        // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
@@ -177,8 +175,7 @@
             appId: "1:211959704845:web:933e082e07312c67165444"
         };
 
-        // Inicializar Firebase
-        const app = firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -210,18 +207,17 @@
                 return;
             }
 
-            const funcionario = { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario };
-
-            db.ref('funcionarios/' + cpf).set(funcionario, (error) => {
-                if (error) {
-                    alert('Falha ao cadastrar funcionário: ' + error);
-                } else {
+            let funcionariosRef = db.ref('funcionarios/' + cpf);
+            funcionariosRef.set({ nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario })
+                .then(() => {
                     alert('Funcionário cadastrado com sucesso!');
                     document.getElementById('cadastroForm').reset();
                     carregarFuncionarios();
                     carregarFiltroFuncionarios();
-                }
-            });
+                })
+                .catch((error) => {
+                    console.error('Erro ao cadastrar funcionário:', error);
+                });
         }
 
         function carregarFuncionarios() {
@@ -230,6 +226,7 @@
 
             db.ref('funcionarios').once('value', (snapshot) => {
                 const funcionarios = snapshot.val();
+
                 for (let cpf in funcionarios) {
                     const funcionario = funcionarios[cpf];
                     const novaLinha = tabelaFuncionarios.insertRow();
@@ -250,6 +247,7 @@
 
             db.ref('funcionarios').once('value', (snapshot) => {
                 const funcionarios = snapshot.val();
+
                 for (let cpf in funcionarios) {
                     const funcionario = funcionarios[cpf];
                     const option = document.createElement('option');
@@ -261,10 +259,11 @@
         }
 
         function verDetalhesFuncionario(cpf) {
+            const detalhesFuncionario = document.getElementById('detalhesFuncionario');
+            detalhesFuncionario.innerHTML = '';
+
             db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
                 const funcionario = snapshot.val();
-                const detalhesFuncionario = document.getElementById('detalhesFuncionario');
-                detalhesFuncionario.innerHTML = '';
 
                 if (!funcionario) {
                     detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
@@ -291,12 +290,13 @@
                 return;
             }
 
+            const tabela = document.getElementById('registrosTabelaAdmin');
+            tabela.innerHTML = ''; // Limpar a tabela
+
+            const diasDoMes = obterDiasDoMesAtual();
+
             db.ref('registrosPonto').orderByChild('cpf').equalTo(cpf).once('value', (snapshot) => {
                 const registros = snapshot.val();
-                const tabela = document.getElementById('registrosTabelaAdmin');
-                tabela.innerHTML = ''; // Limpar a tabela
-
-                const diasDoMes = obterDiasDoMesAtual();
                 const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
 
                 diasDoMes.forEach(dia => {
@@ -361,65 +361,25 @@
             return diasDoMes;
         }
 
-        function gerarRelatorio() {
-            const cpf = document.getElementById('filterFuncionario').value;
-            if (!cpf) return;
-
-            db.ref('registrosPonto').orderByChild('cpf').equalTo(cpf).once('value', (snapshot) => {
-                const registros = snapshot.val();
-                const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
-                let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
-                registrosOrganizados.forEach(registro => {
-                    csvContent += `${registro.data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
-                });
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "registros_ponto.csv");
-                document.body.appendChild(link); // Required for FF
-                link.click();
-                document.body.removeChild(link);
-            });
-        }
-
         function salvarAlteracao(data, cpf) {
             const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
 
             inputs.forEach(input => {
                 const tipo = input.getAttribute('data-tipo');
                 const valor = input.value;
-                const dataHora = valor ? `${data} ${valor}` : '';
-
-                db.ref('registrosPonto').orderByChild('cpf').equalTo(cpf).once('value', (snapshot) => {
+                const registroRef = db.ref('registrosPonto').orderByChild('cpf').equalTo(cpf).once('value', (snapshot) => {
                     const registros = snapshot.val();
-                    let registroKey = null;
-
                     for (let key in registros) {
-                        if (registros[key].data === data && registros[key].tipo === tipo) {
-                            registroKey = key;
-                            break;
+                        const registro = registros[key];
+                        if (registro.data === data && registro.tipo === tipo) {
+                            db.ref('registrosPonto/' + key).update({ dataHora: valor ? `${data} ${valor}` : '' });
                         }
-                    }
-
-                    if (registroKey) {
-                        db.ref('registrosPonto/' + registroKey).update({ dataHora: dataHora }, (error) => {
-                            if (error) {
-                                alert('Erro ao salvar alteração: ' + error);
-                            } else {
-                                carregarRegistrosFuncionario();
-                            }
-                        });
-                    } else {
-                        db.ref('registrosPonto').push({ cpf: cpf, data: data, tipo: tipo, dataHora: dataHora }, (error) => {
-                            if (error) {
-                                alert('Erro ao adicionar novo registro: ' + error);
-                            } else {
-                                carregarRegistrosFuncionario();
-                            }
-                        });
                     }
                 });
             });
+
+            alert('Alterações salvas com sucesso!');
+            carregarRegistrosFuncionario();
         }
 
         function limparDados() {
