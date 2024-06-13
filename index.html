@@ -105,6 +105,11 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        #totalHoras {
+            margin-top: 20px;
+            font-size: 16px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -147,6 +152,7 @@
                     <!-- Registros do dia serão inseridos aqui -->
                 </tbody>
             </table>
+            <div id="totalHoras">Total de horas trabalhadas: 0</div>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
     </div>
@@ -205,6 +211,7 @@
             if (tipo === 'saida') {
                 document.getElementById('gerarPDF').style.display = 'block';
             }
+            atualizarTotalHoras();
         }
 
         function salvarRegistroLocalmente(registro) {
@@ -250,6 +257,7 @@
                         celulaHorario.textContent = registros[tipo].split(' ')[1];
                     });
                     document.getElementById('tabelaRegistros').style.display = 'table';
+                    atualizarTotalHoras();
                 }
             });
         }
@@ -262,6 +270,31 @@
             celulaTipo.textContent = registro.tipo.charAt(0).toUpperCase() + registro.tipo.slice(1);
             celulaHorario.textContent = registro.dataHora.split(' ')[1];
             document.getElementById('tabelaRegistros').style.display = 'table';
+        }
+
+        function atualizarTotalHoras() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
+            dbRef.get().then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    const entrada = registros.entrada ? new Date(registros.entrada) : null;
+                    const pausa = registros.pausa ? new Date(registros.pausa) : null;
+                    const retorno = registros.retorno ? new Date(registros.retorno) : null;
+                    const saida = registros.saida ? new Date(registros.saida) : null;
+
+                    if (entrada && saida) {
+                        let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                        if (pausa && retorno) {
+                            horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                        }
+                        document.getElementById('totalHoras').innerText = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)}`;
+                    } else {
+                        document.getElementById('totalHoras').innerText = 'Total de horas trabalhadas: 0';
+                    }
+                }
+            });
         }
 
         function gerarPDF() {
@@ -284,6 +317,9 @@
                 doc.text(`${tipo}: ${horario}`, 20, y);
                 y += 10;
             }
+
+            const totalHoras = document.getElementById('totalHoras').innerText;
+            doc.text(totalHoras, 20, y + 10);
 
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
