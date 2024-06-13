@@ -93,7 +93,7 @@
                 return;
             }
 
-            db.ref('funcionarios/' + cpf).once('value').then(snapshot => {
+            db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
                 const funcionario = snapshot.val();
 
                 if (!funcionario) {
@@ -115,47 +115,47 @@
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
 
             const registroRef = db.ref('registrosPonto').push();
-            registroRef.set(registro).then(() => {
-                adicionarRegistroNaTabela(registro);
-                document.getElementById(tipo).classList.add('disabled');
-                alert('Ponto registrado com sucesso!');
-            });
-        }
+            registroRef.set(registro);
 
-        function adicionarRegistroNaTabela(registro) {
-            const tabela = document.getElementById('registrosTabela') || document.createElement('tbody');
-            const novaLinha = tabela.insertRow();
-            const celulaNome = novaLinha.insertCell(0);
-            const celulaTipo = novaLinha.insertCell(1);
-            const celulaDataHora = novaLinha.insertCell(2);
-
-            celulaNome.textContent = registro.nome;
-            celulaTipo.textContent = capitalizeFirstLetter(registro.tipo);
-            celulaDataHora.textContent = registro.dataHora;
+            document.getElementById(tipo).classList.add('disabled');
+            carregarHistorico();
         }
 
         function desativarBotoes() {
+            const botoes = document.querySelectorAll('.button');
+            botoes.forEach(botao => botao.classList.remove('disabled'));
+
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toISOString().split('T')[0];
+            const data = new Date().toISOString().split('T')[0];
 
-            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value').then(snapshot => {
-                const registros = snapshot.val() || {};
-                const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value', (snapshot) => {
+                const registros = snapshot.val();
 
-                botoes.forEach(botao => {
-                    const btnElement = document.getElementById(botao);
-                    const registroExistente = Object.values(registros).find(reg => reg.tipo === botao && reg.data === dataAtual);
-                    if (registroExistente) {
-                        btnElement.classList.add('disabled');
-                    } else {
-                        btnElement.classList.remove('disabled');
+                for (let key in registros) {
+                    if (registros[key].data === data) {
+                        document.getElementById(registros[key].tipo).classList.add('disabled');
                     }
-                });
+                }
             });
         }
 
-        function capitalizeFirstLetter(string) {
-            return string.charAt(0).toUpperCase() + string.slice(1);
+        function carregarHistorico() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const data = new Date().toISOString().split('T')[0];
+
+            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value', (snapshot) => {
+                const registros = snapshot.val();
+                const historico = document.getElementById('historico');
+                historico.innerHTML = '';
+
+                for (let key in registros) {
+                    if (registros[key].data === data) {
+                        const div = document.createElement('div');
+                        div.textContent = `${registros[key].tipo.charAt(0).toUpperCase() + registros[key].tipo.slice(1)}: ${registros[key].dataHora.split(' ')[1]}`;
+                        historico.appendChild(div);
+                    }
+                }
+            });
         }
     </script>
 </head>
@@ -166,11 +166,10 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="button" id="painelButton" onclick="irParaAdmin()">
-                Painel
-            </div>
+            <div class="button" onclick="irParaAdmin()">Painel</div>
         </form>
         <div id="registroPonto" style="display: none;">
+            <h2>Bem-vindo(a), <span id="nomeFuncionario"></span></h2>
             <div class="buttons">
                 <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
                     <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
@@ -189,12 +188,8 @@
                     Saída
                 </div>
             </div>
+            <div id="historico"></div>
         </div>
     </div>
-    <script>
-        function irParaAdmin() {
-            window.location.href = "admin.html";
-        }
-    </script>
 </body>
 </html>
