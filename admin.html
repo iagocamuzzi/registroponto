@@ -206,71 +206,81 @@
                 return;
             }
 
-            let funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-            if (funcionarios.find(func => func.cpf === cpf)) {
-                alert('Funcionário já cadastrado com esse CPF.');
-                return;
-            }
-
-            funcionarios.push({ nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
-            localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
-            alert('Funcionário cadastrado com sucesso!');
-            document.getElementById('cadastroForm').reset();
-            carregarFuncionarios();
-            carregarFiltroFuncionarios();
+            const funcionario = { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario };
+            const funcionariosRef = firebase.database().ref('funcionarios/' + cpf);
+            funcionariosRef.set(funcionario, error => {
+                if (error) {
+                    alert('Erro ao cadastrar funcionário: ' + error.message);
+                } else {
+                    alert('Funcionário cadastrado com sucesso!');
+                    document.getElementById('cadastroForm').reset();
+                    carregarFuncionarios();
+                    carregarFiltroFuncionarios();
+                }
+            });
         }
 
         function carregarFuncionarios() {
-            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-            const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
-            tabelaFuncionarios.innerHTML = ''; // Limpar a tabela
+            const funcionariosRef = firebase.database().ref('funcionarios');
+            funcionariosRef.once('value', snapshot => {
+                const funcionarios = snapshot.val();
+                const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
+                tabelaFuncionarios.innerHTML = ''; // Limpar a tabela
 
-            funcionarios.forEach(funcionario => {
-                const novaLinha = tabelaFuncionarios.insertRow();
-                const celulaNomeCompleto = novaLinha.insertCell(0);
-                const celulaCpf = novaLinha.insertCell(1);
-                const celulaDetalhes = novaLinha.insertCell(2);
+                for (const cpf in funcionarios) {
+                    const funcionario = funcionarios[cpf];
+                    const novaLinha = tabelaFuncionarios.insertRow();
+                    const celulaNomeCompleto = novaLinha.insertCell(0);
+                    const celulaCpf = novaLinha.insertCell(1);
+                    const celulaDetalhes = novaLinha.insertCell(2);
 
-                celulaNomeCompleto.textContent = funcionario.nomeCompleto;
-                celulaCpf.textContent = funcionario.cpf;
-                celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
+                    celulaNomeCompleto.textContent = funcionario.nomeCompleto;
+                    celulaCpf.textContent = funcionario.cpf;
+                    celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
+                }
             });
         }
 
         function carregarFiltroFuncionarios() {
-            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-            const filtroFuncionario = document.getElementById('filterFuncionario');
-            filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
+            const funcionariosRef = firebase.database().ref('funcionarios');
+            funcionariosRef.once('value', snapshot => {
+                const funcionarios = snapshot.val();
+                const filtroFuncionario = document.getElementById('filterFuncionario');
+                filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
 
-            funcionarios.forEach(funcionario => {
-                const option = document.createElement('option');
-                option.value = funcionario.cpf;
-                option.textContent = funcionario.nomeCompleto;
-                filtroFuncionario.appendChild(option);
+                for (const cpf in funcionarios) {
+                    const funcionario = funcionarios[cpf];
+                    const option = document.createElement('option');
+                    option.value = funcionario.cpf;
+                    option.textContent = funcionario.nomeCompleto;
+                    filtroFuncionario.appendChild(option);
+                }
             });
         }
 
         function verDetalhesFuncionario(cpf) {
-            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-            const funcionario = funcionarios.find(func => func.cpf === cpf);
-            const detalhesFuncionario = document.getElementById('detalhesFuncionario');
-            detalhesFuncionario.innerHTML = '';
+            const funcionariosRef = firebase.database().ref('funcionarios/' + cpf);
+            funcionariosRef.once('value', snapshot => {
+                const funcionario = snapshot.val();
+                const detalhesFuncionario = document.getElementById('detalhesFuncionario');
+                detalhesFuncionario.innerHTML = '';
 
-            if (!funcionario) {
-                detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
-                return;
-            }
+                if (!funcionario) {
+                    detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
+                    return;
+                }
 
-            detalhesFuncionario.innerHTML = `
-                <h3>Detalhes do Funcionário</h3>
-                <p><strong>Nome Completo:</strong> ${funcionario.nomeCompleto}</p>
-                <p><strong>CPF:</strong> ${funcionario.cpf}</p>
-                <p><strong>Data de Nascimento:</strong> ${funcionario.dataNascimento}</p>
-                <p><strong>Email:</strong> ${funcionario.email}</p>
-                <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
-                <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
-                <p><strong>Salário:</strong> ${funcionario.salario}</p>
-            `;
+                detalhesFuncionario.innerHTML = `
+                    <h3>Detalhes do Funcionário</h3>
+                    <p><strong>Nome Completo:</strong> ${funcionario.nomeCompleto}</p>
+                    <p><strong>CPF:</strong> ${funcionario.cpf}</p>
+                    <p><strong>Data de Nascimento:</strong> ${funcionario.dataNascimento}</p>
+                    <p><strong>Email:</strong> ${funcionario.email}</p>
+                    <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
+                    <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
+                    <p><strong>Salário:</strong> ${funcionario.salario}</p>
+                `;
+            });
         }
 
         async function carregarRegistrosFuncionario() {
