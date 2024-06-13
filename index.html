@@ -68,44 +68,21 @@
             width: 100%;
             margin-top: 10px;
         }
-        #nomeFuncionario {
-            margin-bottom: 20px;
-            font-size: 18px;
-            text-align: center;
-        }
-        .admin-button {
+        .history {
             margin-top: 20px;
-            background-color: #333;
-            color: white;
-            padding: 10px;
-            text-align: center;
-            border-radius: 5px;
-            cursor: pointer;
+            text-align: left;
         }
-        .registro-dia {
+        .history div {
+            margin-bottom: 10px;
+        }
+        .generate-pdf {
             margin-top: 20px;
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .registro-dia th, .registro-dia td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        .registro-dia th {
-            background-color: #f2f2f2;
-        }
-        .pdf-button {
             display: none;
-            margin-top: 20px;
-            background-color: #333;
-            color: white;
-            padding: 10px;
-            text-align: center;
-            border-radius: 5px;
-            cursor: pointer;
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -114,10 +91,9 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
         </form>
         <div id="registroPonto" style="display: none;">
-            <div id="nomeFuncionario"></div>
+            <h3 id="bemVindo"></h3>
             <div class="buttons">
                 <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
                     <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
@@ -136,35 +112,27 @@
                     Saída
                 </div>
             </div>
-            <table id="tabelaRegistros" class="registro-dia" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Horário</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Registros do dia serão inseridos aqui -->
-                </tbody>
-            </table>
-            <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
+            <div class="history" id="history">
+                <!-- Histórico de registros será inserido aqui -->
+            </div>
+            <button id="generatePDF" class="generate-pdf" onclick="gerarPDF()">Gerar Comprovante PDF</button>
+        </div>
+        <div>
+            <button onclick="irParaAdmin()">Painel</button>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
+            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com",
             projectId: "pontoeletronico-f3f30",
             storageBucket: "pontoeletronico-f3f30.appspot.com",
             messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444",
-            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
+            appId: "1:211959704845:web:933e082e07312c67165444"
         };
 
-        firebase.initializeApp(firebaseConfig);
+        const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         function acessarRegistro() {
@@ -175,20 +143,20 @@
                 return;
             }
 
-            const dbRef = db.ref(`funcionarios/${cpf}`);
-            dbRef.get().then(snapshot => {
-                if (!snapshot.exists()) {
+            db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
+                const funcionario = snapshot.val();
+
+                if (!funcionario) {
                     alert('Funcionário não encontrado.');
                     return;
                 }
 
-                const funcionario = snapshot.val();
                 localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
                 document.getElementById('acessoForm').style.display = 'none';
                 document.getElementById('registroPonto').style.display = 'block';
-                document.getElementById('nomeFuncionario').innerText = `Bem-vinda, ${funcionario.nomeCompleto}`;
-                carregarRegistrosDoDia();
+                document.getElementById('bemVindo').textContent = `Bem-Vinda, ${funcionario.nomeCompleto}`;
                 desativarBotoes();
+                carregarHistorico();
             });
         }
 
@@ -198,104 +166,83 @@
             const data = new Date().toISOString().split('T')[0];
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
 
-            salvarRegistroLocalmente(registro);
             adicionarRegistroNaTabela(registro);
-            document.getElementById(tipo).classList.add('disabled');
+            salvarRegistroLocalmente(registro);
 
-            if (tipo === 'saida') {
-                document.getElementById('gerarPDF').style.display = 'block';
-            }
+            document.getElementById(tipo).classList.add('disabled');
+            document.getElementById('generatePDF').style.display = 'block';
+        }
+
+        function adicionarRegistroNaTabela(registro) {
+            const historico = document.getElementById('history');
+            const div = document.createElement('div');
+            div.textContent = `${capitalizeFirstLetter(registro.tipo)}: ${registro.dataHora.split(' ')[1]}`;
+            historico.appendChild(div);
         }
 
         function salvarRegistroLocalmente(registro) {
-            const dbRef = db.ref(`registros/${registro.cpf}/${registro.data}`);
-            dbRef.get().then(snapshot => {
-                const registros = snapshot.exists() ? snapshot.val() : {};
-                registros[registro.tipo] = registro.dataHora;
-                dbRef.set(registros);
-            });
+            const newRegistroRef = db.ref('registrosPonto').push();
+            newRegistroRef.set(registro);
         }
 
         function desativarBotoes() {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dbRef = db.ref(`registros/${funcionario.cpf}/${new Date().toISOString().split('T')[0]}`);
-            dbRef.get().then(snapshot => {
-                const registros = snapshot.exists() ? snapshot.val() : {};
-                const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
-                botoes.forEach(botao => {
-                    const btnElement = document.getElementById(botao);
-                    if (registros[botao]) {
-                        btnElement.classList.add('disabled');
-                    } else {
-                        btnElement.classList.remove('disabled');
-                    }
-                });
-            });
-        }
-
-        function carregarRegistrosDoDia() {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
             const dataAtual = new Date().toISOString().split('T')[0];
-            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
-            dbRef.get().then(snapshot => {
-                if (snapshot.exists()) {
-                    const registros = snapshot.val();
-                    const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
-                    tabela.innerHTML = ''; // Limpar a tabela
-                    Object.keys(registros).forEach(tipo => {
-                        const novaLinha = tabela.insertRow();
-                        const celulaTipo = novaLinha.insertCell(0);
-                        const celulaHorario = novaLinha.insertCell(1);
-                        celulaTipo.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1);
-                        celulaHorario.textContent = registros[tipo].split(' ')[1];
-                    });
-                    document.getElementById('tabelaRegistros').style.display = 'table';
+            const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+
+            botoes.forEach(botao => {
+                const btnElement = document.getElementById(botao);
+                const registro = registros.find(reg => reg.tipo === botao && reg.cpf === JSON.parse(localStorage.getItem('funcionarioLogado')).cpf && reg.data === dataAtual);
+                if (registro) {
+                    btnElement.classList.add('disabled');
+                } else {
+                    btnElement.classList.remove('disabled');
                 }
             });
         }
 
-        function adicionarRegistroNaTabela(registro) {
-            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
-            const novaLinha = tabela.insertRow();
-            const celulaTipo = novaLinha.insertCell(0);
-            const celulaHorario = novaLinha.insertCell(1);
-            celulaTipo.textContent = registro.tipo.charAt(0).toUpperCase() + registro.tipo.slice(1);
-            celulaHorario.textContent = registro.dataHora.split(' ')[1];
-            document.getElementById('tabelaRegistros').style.display = 'table';
-        }
-
-        function gerarPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
+        function carregarHistorico() {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toLocaleDateString();
-            doc.text(`Comprovante de Registro de Ponto`, 20, 20);
-            doc.text(`Funcionário: ${funcionario.nomeCompleto}`, 20, 30);
-            doc.text(`Data: ${dataAtual}`, 20, 40);
+            const dataAtual = new Date().toISOString().split('T')[0];
 
-            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
-            const linhas = tabela.getElementsByTagName('tr');
+            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value', (snapshot) => {
+                const registros = snapshot.val();
+                const historico = document.getElementById('history');
+                historico.innerHTML = '';
 
-            let y = 50;
-            for (let i = 0; i < linhas.length; i++) {
-                const tipo = linhas[i].getElementsByTagName('td')[0].textContent;
-                const horario = linhas[i].getElementsByTagName('td')[1].textContent;
-                doc.text(`${tipo}: ${horario}`, 20, y);
-                y += 10;
-            }
-
-            doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
+                for (let key in registros) {
+                    const registro = registros[key];
+                    if (registro.data === dataAtual) {
+                        adicionarRegistroNaTabela(registro);
+                    }
+                }
+            });
         }
 
         function irParaAdmin() {
             window.location.href = 'admin.html';
         }
 
-        window.acessarRegistro = acessarRegistro;
-        window.registrarPonto = registrarPonto;
-        window.gerarPDF = gerarPDF;
-        window.irParaAdmin = irParaAdmin;
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        function gerarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toLocaleDateString();
+            const registros = document.getElementById('history').innerText;
+
+            doc.text(`Comprovante de Registro de Ponto`, 10, 10);
+            doc.text(`Funcionário: ${funcionario.nomeCompleto}`, 10, 20);
+            doc.text(`CPF: ${funcionario.cpf}`, 10, 30);
+            doc.text(`Data: ${dataAtual}`, 10, 40);
+            doc.text(`Registros:`, 10, 50);
+            doc.text(registros, 10, 60);
+
+            doc.save(`comprovante_${dataAtual}.pdf`);
+        }
     </script>
 </body>
 </html>
