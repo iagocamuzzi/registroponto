@@ -69,95 +69,6 @@
             margin-top: 10px;
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
-            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
-            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com",
-            projectId: "pontoeletronico-f3f30",
-            storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        function acessarRegistro() {
-            const cpf = document.getElementById('cpfAcesso').value.trim();
-
-            if (cpf === '') {
-                alert('Por favor, insira o CPF.');
-                return;
-            }
-
-            db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
-                const funcionario = snapshot.val();
-
-                if (!funcionario) {
-                    alert('Funcionário não encontrado.');
-                    return;
-                }
-
-                localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
-                document.getElementById('acessoForm').style.display = 'none';
-                document.getElementById('registroPonto').style.display = 'block';
-                desativarBotoes();
-            });
-        }
-
-        function registrarPonto(tipo) {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataHora = new Date().toLocaleString();
-            const data = new Date().toISOString().split('T')[0];
-            const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
-
-            const registroRef = db.ref('registrosPonto').push();
-            registroRef.set(registro);
-
-            document.getElementById(tipo).classList.add('disabled');
-            carregarHistorico();
-        }
-
-        function desativarBotoes() {
-            const botoes = document.querySelectorAll('.button');
-            botoes.forEach(botao => botao.classList.remove('disabled'));
-
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const data = new Date().toISOString().split('T')[0];
-
-            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value', (snapshot) => {
-                const registros = snapshot.val();
-
-                for (let key in registros) {
-                    if (registros[key].data === data) {
-                        document.getElementById(registros[key].tipo).classList.add('disabled');
-                    }
-                }
-            });
-        }
-
-        function carregarHistorico() {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const data = new Date().toISOString().split('T')[0];
-
-            db.ref('registrosPonto').orderByChild('cpf').equalTo(funcionario.cpf).once('value', (snapshot) => {
-                const registros = snapshot.val();
-                const historico = document.getElementById('historico');
-                historico.innerHTML = '';
-
-                for (let key in registros) {
-                    if (registros[key].data === data) {
-                        const div = document.createElement('div');
-                        div.textContent = `${registros[key].tipo.charAt(0).toUpperCase() + registros[key].tipo.slice(1)}: ${registros[key].dataHora.split(' ')[1]}`;
-                        historico.appendChild(div);
-                    }
-                }
-            });
-        }
-    </script>
 </head>
 <body>
     <div class="container">
@@ -166,10 +77,8 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="button" onclick="irParaAdmin()">Painel</div>
         </form>
         <div id="registroPonto" style="display: none;">
-            <h2>Bem-vindo(a), <span id="nomeFuncionario"></span></h2>
             <div class="buttons">
                 <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
                     <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
@@ -188,8 +97,85 @@
                     Saída
                 </div>
             </div>
-            <div id="historico"></div>
         </div>
+        <button onclick="irParaAdmin()">Painel</button>
     </div>
+    <script>
+        function acessarRegistro() {
+            const cpf = document.getElementById('cpfAcesso').value.trim();
+
+            if (cpf === '') {
+                alert('Por favor, insira o CPF.');
+                return;
+            }
+
+            let funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+            const funcionario = funcionarios.find(func => func.cpf === cpf);
+
+            if (!funcionario) {
+                alert('Funcionário não encontrado.');
+                return;
+            }
+
+            localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
+            document.getElementById('acessoForm').style.display = 'none';
+            document.getElementById('registroPonto').style.display = 'block';
+            desativarBotoes();
+        }
+
+        function registrarPonto(tipo) {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataHora = new Date().toLocaleString();
+            const data = new Date().toISOString().split('T')[0];
+            const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
+
+            adicionarRegistroNaTabela(registro);
+            salvarRegistroLocalmente(registro);
+
+            document.getElementById(tipo).classList.add('disabled');
+        }
+
+        function adicionarRegistroNaTabela(registro) {
+            const tabela = document.getElementById('registrosTabela') || document.createElement('tbody');
+            const novaLinha = tabela.insertRow();
+            const celulaNome = novaLinha.insertCell(0);
+            const celulaTipo = novaLinha.insertCell(1);
+            const celulaDataHora = novaLinha.insertCell(2);
+
+            celulaNome.textContent = registro.nome;
+            celulaTipo.textContent = capitalizeFirstLetter(registro.tipo);
+            celulaDataHora.textContent = registro.dataHora;
+        }
+
+        function salvarRegistroLocalmente(registro) {
+            let registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            registros.push(registro);
+            localStorage.setItem('registrosPonto', JSON.stringify(registros));
+        }
+
+        function desativarBotoes() {
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+
+            botoes.forEach(botao => {
+                const btnElement = document.getElementById(botao);
+                const registro = registros.find(reg => reg.tipo === botao && reg.cpf === JSON.parse(localStorage.getItem('funcionarioLogado')).cpf && reg.data === dataAtual);
+                if (registro) {
+                    btnElement.classList.add('disabled');
+                } else {
+                    btnElement.classList.remove('disabled');
+                }
+            });
+        }
+
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        function irParaAdmin() {
+            window.location.href = "admin.html";
+        }
+    </script>
 </body>
 </html>
