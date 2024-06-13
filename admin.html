@@ -320,50 +320,50 @@
             const cpf = document.getElementById('filterFuncionario').value;
             if (!cpf) return;
 
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
-            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
-            let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
-            registrosOrganizados.forEach(registro => {
-                csvContent += `${registro.data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
+            const registrosRef = firebase.database().ref(`/registrosPonto/${cpf}`);
+            registrosRef.once('value').then(snapshot => {
+                const registros = snapshot.val() || {};
+                let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
+                Object.keys(registros).forEach(data => {
+                    const registro = registros[data];
+                    csvContent += `${data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
+                });
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "registros_ponto.csv");
+                document.body.appendChild(link); // Required for FF
+                link.click();
+                document.body.removeChild(link);
             });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "registros_ponto.csv");
-            document.body.appendChild(link); // Required for FF
-            link.click();
-            document.body.removeChild(link);
         }
 
-        function salvarAlteracao(data, cpf) {
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+        async function salvarAlteracao(data, cpf) {
+            const registrosRef = firebase.database().ref(`/registrosPonto/${cpf}/${data}`);
             const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
+            const registroAtualizado = {};
 
             inputs.forEach(input => {
                 const tipo = input.getAttribute('data-tipo');
                 const valor = input.value;
-
-                let registro = registros.find(reg => reg.data === data && reg.cpf === cpf && reg.tipo === tipo);
-                if (registro) {
-                    registro.dataHora = valor ? `${data} ${valor}` : '';
-                } else {
-                    registros.push({ data, cpf, tipo, dataHora: valor ? `${data} ${valor}` : '' });
+                if (valor) {
+                    registroAtualizado[tipo] = `${data} ${valor}`;
                 }
             });
 
-            localStorage.setItem('registrosPonto', JSON.stringify(registros));
+            await registrosRef.update(registroAtualizado);
             alert('Alterações salvas com sucesso!');
             carregarRegistrosFuncionario();
         }
 
         function limparDados() {
             if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
-                localStorage.setItem('funcionarios', JSON.stringify([]));
-                localStorage.setItem('registrosPonto', JSON.stringify([]));
-                alert('Todos os dados foram limpos.');
-                carregarFuncionarios();
-                carregarFiltroFuncionarios();
-                document.getElementById('registrosTabelaAdmin').innerHTML = '';
+                firebase.database().ref('/').set(null).then(() => {
+                    alert('Todos os dados foram limpos.');
+                    carregarFuncionarios();
+                    carregarFiltroFuncionarios();
+                    document.getElementById('registrosTabelaAdmin').innerHTML = '';
+                });
             }
         }
 
