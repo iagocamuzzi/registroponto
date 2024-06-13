@@ -259,19 +259,23 @@
             `;
         }
 
-        function carregarRegistrosFuncionario() {
+        async function carregarRegistrosFuncionario() {
             const cpf = document.getElementById('filterFuncionario').value;
             if (!cpf) {
                 document.getElementById('registrosTabelaAdmin').innerHTML = '';
                 return;
             }
 
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const registrosRef = firebase.database().ref('registrosPonto');
+            const snapshot = await registrosRef.orderByChild('cpf').equalTo(cpf).once('value');
+            const registros = snapshot.val() || {};
+            const registrosList = Object.values(registros);
+
             const tabela = document.getElementById('registrosTabelaAdmin');
             tabela.innerHTML = ''; // Limpar a tabela
 
             const diasDoMes = obterDiasDoMesAtual();
-            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
+            const registrosOrganizados = organizarRegistrosPorData(registrosList, cpf);
 
             diasDoMes.forEach(dia => {
                 let registro = registrosOrganizados.find(reg => reg.data === dia.data && reg.cpf === cpf);
@@ -351,30 +355,33 @@
         }
 
         function salvarAlteracao(data, cpf) {
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const registrosRef = firebase.database().ref('registrosPonto');
             const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
 
             inputs.forEach(input => {
                 const tipo = input.getAttribute('data-tipo');
                 const valor = input.value;
 
-                let registro = registros.find(reg => reg.data === data && reg.cpf === cpf && reg.tipo === tipo);
-                if (registro) {
-                    registro.dataHora = valor ? `${data} ${valor}` : '';
-                } else {
-                    registros.push({ data, cpf, tipo, dataHora: valor ? `${data} ${valor}` : '' });
-                }
+                registrosRef.orderByChild('cpf').equalTo(cpf).once('value', snapshot => {
+                    snapshot.forEach(childSnapshot => {
+                        const registro = childSnapshot.val();
+                        if (registro.data === data && registro.tipo === tipo) {
+                            const updates = {};
+                            updates[childSnapshot.key + '/dataHora'] = valor ? `${data} ${valor}` : '';
+                            registrosRef.update(updates);
+                        }
+                    });
+                });
             });
 
-            localStorage.setItem('registrosPonto', JSON.stringify(registros));
             alert('Alterações salvas com sucesso!');
             carregarRegistrosFuncionario();
         }
 
         function limparDados() {
             if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
-                localStorage.setItem('funcionarios', JSON.stringify([]));
-                localStorage.setItem('registrosPonto', JSON.stringify([]));
+                firebase.database().ref('funcionarios').remove();
+                firebase.database().ref('registrosPonto').remove();
                 alert('Todos os dados foram limpos.');
                 carregarFuncionarios();
                 carregarFiltroFuncionarios();
