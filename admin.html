@@ -88,22 +88,81 @@
             background-color: transparent;
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <a href="#" onclick="toggleSubmenu('cadastroSubmenu')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/user.png"/> Cadastrar
+        </a>
+        <div id="cadastroSubmenu" class="submenu">
+            <a href="#" onclick="showSection('novoCadastro')">Novo Cadastro</a>
+            <a href="#" onclick="showSection('consultarCadastro')">Consultar</a>
+        </div>
+        <a href="#" onclick="showSection('relatorios')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
+        </a>
+    </div>
+    <div class="container">
+        <h1>Administração de Pontos</h1>
+        <div id="novoCadastro" class="section">
+            <form id="cadastroForm">
+                <h2>Cadastro de Funcionário</h2>
+                <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
+                <input type="text" id="cpfCadastro" placeholder="CPF" required>
+                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
+                <input type="email" id="emailCadastro" placeholder="Email" required>
+                <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
+                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
+                <input type="number" id="salarioCadastro" placeholder="Salário" required>
+                <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
+            </form>
+        </div>
+        <div id="consultarCadastro" class="section">
+            <h2>Consultar Funcionário</h2>
+            <table id="tabelaFuncionarios">
+                <thead>
+                    <tr>
+                        <th>Nome Completo</th>
+                        <th>CPF</th>
+                        <th>Detalhes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Lista de funcionários será inserida aqui -->
+                </tbody>
+            </table>
+            <div id="detalhesFuncionario"></div>
+        </div>
+        <div id="relatorios" class="section">
+            <div class="filter">
+                <label for="filterFuncionario">Selecionar Funcionário:</label>
+                <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
+                    <option value="">Selecione um funcionário</option>
+                </select>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Entrada</th>
+                        <th>Pausa</th>
+                        <th>Retorno</th>
+                        <th>Saída</th>
+                        <th>Horas Trabalhadas</th>
+                        <th>Horas Extras</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="registrosTabelaAdmin">
+                    <!-- Registros serão inseridos aqui -->
+                </tbody>
+            </table>
+            <div class="admin-buttons">
+                <button onclick="limparDados()">Limpar Todos os Dados</button>
+            </div>
+        </div>
+    </div>
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
-            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
-            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com",
-            projectId: "pontoeletronico-f3f30",
-            storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
         document.addEventListener('DOMContentLoaded', () => {
             carregarFuncionarios();
             carregarFiltroFuncionarios();
@@ -133,77 +192,71 @@
                 return;
             }
 
-            const novoFuncionario = { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario };
-            db.ref('funcionarios/' + cpf).set(novoFuncionario, (error) => {
-                if (error) {
-                    alert('Erro ao cadastrar funcionário: ' + error.message);
-                } else {
-                    alert('Funcionário cadastrado com sucesso!');
-                    document.getElementById('cadastroForm').reset();
-                    carregarFuncionarios();
-                    carregarFiltroFuncionarios();
-                }
-            });
+            let funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+            if (funcionarios.find(func => func.cpf === cpf)) {
+                alert('Funcionário já cadastrado com esse CPF.');
+                return;
+            }
+
+            funcionarios.push({ nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
+            localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
+            alert('Funcionário cadastrado com sucesso!');
+            document.getElementById('cadastroForm').reset();
+            carregarFuncionarios();
+            carregarFiltroFuncionarios();
         }
 
         function carregarFuncionarios() {
-            db.ref('funcionarios').once('value', (snapshot) => {
-                const funcionarios = snapshot.val();
-                const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
-                tabelaFuncionarios.innerHTML = '';
+            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+            const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
+            tabelaFuncionarios.innerHTML = ''; // Limpar a tabela
 
-                for (let cpf in funcionarios) {
-                    const funcionario = funcionarios[cpf];
-                    const novaLinha = tabelaFuncionarios.insertRow();
-                    const celulaNomeCompleto = novaLinha.insertCell(0);
-                    const celulaCpf = novaLinha.insertCell(1);
-                    const celulaDetalhes = novaLinha.insertCell(2);
+            funcionarios.forEach(funcionario => {
+                const novaLinha = tabelaFuncionarios.insertRow();
+                const celulaNomeCompleto = novaLinha.insertCell(0);
+                const celulaCpf = novaLinha.insertCell(1);
+                const celulaDetalhes = novaLinha.insertCell(2);
 
-                    celulaNomeCompleto.textContent = funcionario.nomeCompleto;
-                    celulaCpf.textContent = funcionario.cpf;
-                    celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
-                }
+                celulaNomeCompleto.textContent = funcionario.nomeCompleto;
+                celulaCpf.textContent = funcionario.cpf;
+                celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
             });
         }
 
         function carregarFiltroFuncionarios() {
-            db.ref('funcionarios').once('value', (snapshot) => {
-                const funcionarios = snapshot.val();
-                const filtroFuncionario = document.getElementById('filterFuncionario');
-                filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>';
+            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+            const filtroFuncionario = document.getElementById('filterFuncionario');
+            filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
 
-                for (let cpf in funcionarios) {
-                    const funcionario = funcionarios[cpf];
-                    const option = document.createElement('option');
-                    option.value = funcionario.cpf;
-                    option.textContent = funcionario.nomeCompleto;
-                    filtroFuncionario.appendChild(option);
-                }
+            funcionarios.forEach(funcionario => {
+                const option = document.createElement('option');
+                option.value = funcionario.cpf;
+                option.textContent = funcionario.nomeCompleto;
+                filtroFuncionario.appendChild(option);
             });
         }
 
         function verDetalhesFuncionario(cpf) {
-            db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
-                const funcionario = snapshot.val();
-                const detalhesFuncionario = document.getElementById('detalhesFuncionario');
-                detalhesFuncionario.innerHTML = '';
+            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+            const funcionario = funcionarios.find(func => func.cpf === cpf);
+            const detalhesFuncionario = document.getElementById('detalhesFuncionario');
+            detalhesFuncionario.innerHTML = '';
 
-                if (!funcionario) {
-                    detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
-                    return;
-                }
+            if (!funcionario) {
+                detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
+                return;
+            }
 
-                detalhesFuncionario.innerHTML = `
-                    <h3>Detalhes do Funcionário</h3>
-                    <p><strong>Nome Completo:</strong> ${funcionario.nomeCompleto}</p>
-                    <p><strong>CPF:</strong> ${funcionario.cpf}</p>
-                    <p><strong>Data de Nascimento:</strong> ${funcionario.dataNascimento}</p>
-                    <p><strong>Email:</strong> ${funcionario.email}</p>
-                    <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
-                    <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
-                    <p><strong>Salário:</strong> ${funcionario.salario}</p>
-                `;
-            });
+            detalhesFuncionario.innerHTML = `
+                <h3>Detalhes do Funcionário</h3>
+                <p><strong>Nome Completo:</strong> ${funcionario.nomeCompleto}</p>
+                <p><strong>CPF:</strong> ${funcionario.cpf}</p>
+                <p><strong>Data de Nascimento:</strong> ${funcionario.dataNascimento}</p>
+                <p><strong>Email:</strong> ${funcionario.email}</p>
+                <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
+                <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
+                <p><strong>Salário:</strong> ${funcionario.salario}</p>
+            `;
         }
 
         function carregarRegistrosFuncionario() {
@@ -213,21 +266,19 @@
                 return;
             }
 
-            db.ref('registrosPonto').orderByChild('cpf').equalTo(cpf).once('value', (snapshot) => {
-                const registros = snapshot.val();
-                const tabela = document.getElementById('registrosTabelaAdmin');
-                tabela.innerHTML = '';
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const tabela = document.getElementById('registrosTabelaAdmin');
+            tabela.innerHTML = ''; // Limpar a tabela
 
-                const diasDoMes = obterDiasDoMesAtual();
-                const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
+            const diasDoMes = obterDiasDoMesAtual();
+            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
 
-                diasDoMes.forEach(dia => {
-                    let registro = registrosOrganizados.find(reg => reg.data === dia.data && reg.cpf === cpf);
-                    if (!registro) {
-                        registro = { data: dia.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
-                    }
-                    adicionarRegistroNaTabela(tabela, registro, dia.nomeDoDia);
-                });
+            diasDoMes.forEach(dia => {
+                let registro = registrosOrganizados.find(reg => reg.data === dia.data && reg.cpf === cpf);
+                if (!registro) {
+                    registro = { data: dia.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
+                }
+                adicionarRegistroNaTabela(tabela, registro, dia.nomeDoDia);
             });
         }
 
@@ -322,8 +373,8 @@
 
         function limparDados() {
             if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
-                db.ref('funcionarios').remove();
-                db.ref('registrosPonto').remove();
+                localStorage.setItem('funcionarios', JSON.stringify([]));
+                localStorage.setItem('registrosPonto', JSON.stringify([]));
                 alert('Todos os dados foram limpos.');
                 carregarFuncionarios();
                 carregarFiltroFuncionarios();
@@ -360,79 +411,5 @@
             return '0.00';
         }
     </script>
-</head>
-<body>
-    <div class="sidebar">
-        <a href="#" onclick="toggleSubmenu('cadastroSubmenu')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/user.png"/> Cadastrar
-        </a>
-        <div id="cadastroSubmenu" class="submenu">
-            <a href="#" onclick="showSection('novoCadastro')">Novo Cadastro</a>
-            <a href="#" onclick="showSection('consultarCadastro')">Consultar</a>
-        </div>
-        <a href="#" onclick="showSection('relatorios')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
-        </a>
-    </div>
-    <div class="container">
-        <h1>Administração de Pontos</h1>
-        <div id="novoCadastro" class="section">
-            <form id="cadastroForm">
-                <h2>Cadastro de Funcionário</h2>
-                <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
-                <input type="text" id="cpfCadastro" placeholder="CPF" required>
-                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
-                <input type="email" id="emailCadastro" placeholder="Email" required>
-                <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
-                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
-                <input type="number" id="salarioCadastro" placeholder="Salário" required>
-                <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
-            </form>
-        </div>
-        <div id="consultarCadastro" class="section">
-            <h2>Consultar Funcionário</h2>
-            <table id="tabelaFuncionarios">
-                <thead>
-                    <tr>
-                        <th>Nome Completo</th>
-                        <th>CPF</th>
-                        <th>Detalhes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Lista de funcionários será inserida aqui -->
-                </tbody>
-            </table>
-            <div id="detalhesFuncionario"></div>
-        </div>
-        <div id="relatorios" class="section">
-            <div class="filter">
-                <label for="filterFuncionario">Selecionar Funcionário:</label>
-                <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
-                    <option value="">Selecione um funcionário</option>
-                </select>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Entrada</th>
-                        <th>Pausa</th>
-                        <th>Retorno</th>
-                        <th>Saída</th>
-                        <th>Horas Trabalhadas</th>
-                        <th>Horas Extras</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="registrosTabelaAdmin">
-                    <!-- Registros serão inseridos aqui -->
-                </tbody>
-            </table>
-            <div class="admin-buttons">
-                <button onclick="limparDados()">Limpar Todos os Dados</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
