@@ -133,20 +133,24 @@
                 return;
             }
 
-            const funcionarioRef = db.ref('funcionarios/' + cpf);
-            funcionarioRef.set({ nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
-            alert('Funcionário cadastrado com sucesso!');
-            document.getElementById('cadastroForm').reset();
-            carregarFuncionarios();
-            carregarFiltroFuncionarios();
+            const novoFuncionario = { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario };
+            db.ref('funcionarios/' + cpf).set(novoFuncionario, (error) => {
+                if (error) {
+                    alert('Erro ao cadastrar funcionário: ' + error.message);
+                } else {
+                    alert('Funcionário cadastrado com sucesso!');
+                    document.getElementById('cadastroForm').reset();
+                    carregarFuncionarios();
+                    carregarFiltroFuncionarios();
+                }
+            });
         }
 
         function carregarFuncionarios() {
-            const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
-            tabelaFuncionarios.innerHTML = ''; // Limpar a tabela
-
             db.ref('funcionarios').once('value', (snapshot) => {
                 const funcionarios = snapshot.val();
+                const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
+                tabelaFuncionarios.innerHTML = '';
 
                 for (let cpf in funcionarios) {
                     const funcionario = funcionarios[cpf];
@@ -163,11 +167,10 @@
         }
 
         function carregarFiltroFuncionarios() {
-            const filtroFuncionario = document.getElementById('filterFuncionario');
-            filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
-
             db.ref('funcionarios').once('value', (snapshot) => {
                 const funcionarios = snapshot.val();
+                const filtroFuncionario = document.getElementById('filterFuncionario');
+                filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>';
 
                 for (let cpf in funcionarios) {
                     const funcionario = funcionarios[cpf];
@@ -180,11 +183,10 @@
         }
 
         function verDetalhesFuncionario(cpf) {
-            const detalhesFuncionario = document.getElementById('detalhesFuncionario');
-            detalhesFuncionario.innerHTML = '';
-
             db.ref('funcionarios/' + cpf).once('value', (snapshot) => {
                 const funcionario = snapshot.val();
+                const detalhesFuncionario = document.getElementById('detalhesFuncionario');
+                detalhesFuncionario.innerHTML = '';
 
                 if (!funcionario) {
                     detalhesFuncionario.innerHTML = '<p>Funcionário não encontrado.</p>';
@@ -211,13 +213,12 @@
                 return;
             }
 
-            const tabela = document.getElementById('registrosTabelaAdmin');
-            tabela.innerHTML = ''; // Limpar a tabela
-
-            const diasDoMes = obterDiasDoMesAtual();
-
             db.ref('registrosPonto').orderByChild('cpf').equalTo(cpf).once('value', (snapshot) => {
                 const registros = snapshot.val();
+                const tabela = document.getElementById('registrosTabelaAdmin');
+                tabela.innerHTML = '';
+
+                const diasDoMes = obterDiasDoMesAtual();
                 const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
 
                 diasDoMes.forEach(dia => {
@@ -254,15 +255,12 @@
         function organizarRegistrosPorData(registros, cpf) {
             const registrosPorData = {};
 
-            for (let key in registros) {
-                const registro = registros[key];
-                if (registro.cpf === cpf) {
-                    if (!registrosPorData[registro.data]) {
-                        registrosPorData[registro.data] = { data: registro.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
-                    }
-                    registrosPorData[registro.data][registro.tipo] = registro.dataHora;
+            registros.filter(reg => reg.cpf === cpf).forEach(registro => {
+                if (!registrosPorData[registro.data]) {
+                    registrosPorData[registro.data] = { data: registro.data, entrada: '', pausa: '', retorno: '', saida: '', cpf: cpf };
                 }
-            }
+                registrosPorData[registro.data][registro.tipo] = registro.dataHora;
+            });
 
             return Object.values(registrosPorData);
         }
@@ -280,6 +278,25 @@
             }
 
             return diasDoMes;
+        }
+
+        function gerarRelatorio() {
+            const cpf = document.getElementById('filterFuncionario').value;
+            if (!cpf) return;
+
+            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
+            let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
+            registrosOrganizados.forEach(registro => {
+                csvContent += `${registro.data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "registros_ponto.csv");
+            document.body.appendChild(link); // Required for FF
+            link.click();
+            document.body.removeChild(link);
         }
 
         function salvarAlteracao(data, cpf) {
