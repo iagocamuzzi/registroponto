@@ -162,7 +162,21 @@
             </div>
         </div>
     </div>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
     <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
+            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com",
+            projectId: "pontoeletronico-f3f30",
+            storageBucket: "pontoeletronico-f3f30.appspot.com",
+            messagingSenderId: "211959704845",
+            appId: "1:211959704845:web:933e082e07312c67165444"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+
         document.addEventListener('DOMContentLoaded', () => {
             carregarFuncionarios();
             carregarFiltroFuncionarios();
@@ -339,19 +353,25 @@
             const cpf = document.getElementById('filterFuncionario').value;
             if (!cpf) return;
 
-            const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
-            const registrosOrganizados = organizarRegistrosPorData(registros, cpf);
-            let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
-            registrosOrganizados.forEach(registro => {
-                csvContent += `${registro.data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
+            const registrosRef = firebase.database().ref('registrosPonto');
+            registrosRef.orderByChild('cpf').equalTo(cpf).once('value', snapshot => {
+                const registros = snapshot.val() || {};
+                const registrosList = Object.values(registros);
+                const registrosOrganizados = organizarRegistrosPorData(registrosList, cpf);
+
+                let csvContent = "data:text/csv;charset=utf-8,Data,Entrada,Pausa,Retorno,Saída,Horas Trabalhadas,Horas Extras\n";
+                registrosOrganizados.forEach(registro => {
+                    csvContent += `${registro.data},${extrairHora(registro.entrada)},${extrairHora(registro.pausa)},${extrairHora(registro.retorno)},${extrairHora(registro.saida)},${calcularHorasTrabalhadas(registro)},${calcularHorasExtras(registro)}\n`;
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "registros_ponto.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "registros_ponto.csv");
-            document.body.appendChild(link); // Required for FF
-            link.click();
-            document.body.removeChild(link);
         }
 
         function salvarAlteracao(data, cpf) {
