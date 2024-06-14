@@ -105,11 +105,6 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .total-horas {
-            margin-top: 20px;
-            font-size: 18px;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -119,7 +114,7 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
+            <div class="admin-button" onclick="mostrarPromptSenha()">Painel</div>
         </form>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
@@ -152,7 +147,6 @@
                     <!-- Registros do dia serão inseridos aqui -->
                 </tbody>
             </table>
-            <div id="totalHoras" class="total-horas" style="display: none;"></div>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
     </div>
@@ -210,7 +204,7 @@
 
             if (tipo === 'saida') {
                 document.getElementById('gerarPDF').style.display = 'block';
-                calcularTotalHorasTrabalhadas();
+                exibirTotalHorasTrabalhadas();
             }
         }
 
@@ -219,11 +213,7 @@
             dbRef.get().then(snapshot => {
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 registros[registro.tipo] = registro.dataHora;
-                dbRef.set(registros).then(() => {
-                    if (registro.tipo === 'saida') {
-                        calcularTotalHorasTrabalhadas();
-                    }
-                });
+                dbRef.set(registros);
             });
         }
 
@@ -261,7 +251,7 @@
                         celulaHorario.textContent = registros[tipo].split(' ')[1];
                     });
                     document.getElementById('tabelaRegistros').style.display = 'table';
-                    calcularTotalHorasTrabalhadas();
+                    exibirTotalHorasTrabalhadas();
                 }
             });
         }
@@ -274,31 +264,6 @@
             celulaTipo.textContent = registro.tipo.charAt(0).toUpperCase() + registro.tipo.slice(1);
             celulaHorario.textContent = registro.dataHora.split(' ')[1];
             document.getElementById('tabelaRegistros').style.display = 'table';
-        }
-
-        function calcularTotalHorasTrabalhadas() {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toISOString().split('T')[0];
-            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
-            dbRef.get().then(snapshot => {
-                if (snapshot.exists()) {
-                    const registros = snapshot.val();
-                    const entrada = registros.entrada ? new Date(`1970-01-01T${registros.entrada.split(' ')[1]}`) : null;
-                    const pausa = registros.pausa ? new Date(`1970-01-01T${registros.pausa.split(' ')[1]}`) : null;
-                    const retorno = registros.retorno ? new Date(`1970-01-01T${registros.retorno.split(' ')[1]}`) : null;
-                    const saida = registros.saida ? new Date(`1970-01-01T${registros.saida.split(' ')[1]}`) : null;
-
-                    let horasTrabalhadas = 0;
-                    if (entrada && saida) {
-                        horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
-                        if (pausa && retorno) {
-                            horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
-                        }
-                    }
-                    document.getElementById('totalHoras').innerText = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)}`;
-                    document.getElementById('totalHoras').style.display = 'block';
-                }
-            });
         }
 
         function gerarPDF() {
@@ -325,6 +290,34 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
+        function exibirTotalHorasTrabalhadas() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
+            dbRef.get().then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    const entrada = registros.entrada ? new Date(registros.entrada) : null;
+                    const saida = registros.saida ? new Date(registros.saida) : null;
+                    if (entrada && saida) {
+                        const horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                        const totalHoras = document.createElement('div');
+                        totalHoras.innerText = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)}`;
+                        document.getElementById('registroPonto').appendChild(totalHoras);
+                    }
+                }
+            });
+        }
+
+        function mostrarPromptSenha() {
+            const senha = prompt('Digite a senha de administrador:');
+            if (senha === '021092') {
+                irParaAdmin();
+            } else {
+                alert('Senha incorreta!');
+            }
+        }
+
         function irParaAdmin() {
             window.location.href = 'admin.html';
         }
@@ -332,6 +325,7 @@
         window.acessarRegistro = acessarRegistro;
         window.registrarPonto = registrarPonto;
         window.gerarPDF = gerarPDF;
+        window.mostrarPromptSenha = mostrarPromptSenha;
         window.irParaAdmin = irParaAdmin;
     </script>
 </body>
