@@ -408,42 +408,53 @@
             return '';
         }
 
-        function carregarDashboard() {
-            const dbRef = ref(db, 'registros');
-            onValue(dbRef, snapshot => {
-                const dashboardTabela = document.getElementById('dashboardTabela');
-                dashboardTabela.innerHTML = ''; // Limpar a tabela
+        async function carregarDashboard() {
+            const dbRef = ref(db, 'funcionarios');
+            const snapshot = await get(dbRef);
 
-                const registros = snapshot.exists() ? snapshot.val() : {};
-                const funcionarios = Object.keys(registros).map(cpf => {
-                    const ultimoRegistro = Object.values(registros[cpf]).reduce((acc, cur) => (new Date(acc.dataHora) > new Date(cur.dataHora) ? acc : cur));
-                    const status = obterStatusFuncionario(ultimoRegistro);
-                    return { cpf, status };
-                });
+            const dashboardTabela = document.getElementById('dashboardTabela');
+            dashboardTabela.innerHTML = ''; // Limpar a tabela
 
-                funcionarios.forEach(funcionario => {
-                    const dbRefFuncionario = ref(db, `funcionarios/${funcionario.cpf}`);
-                    get(dbRefFuncionario).then(snapshot => {
+            if (snapshot.exists()) {
+                const funcionarios = snapshot.val();
+                Object.keys(funcionarios).forEach(cpf => {
+                    const funcionario = funcionarios[cpf];
+                    const novaLinha = dashboardTabela.insertRow();
+                    const celulaNomeCompleto = novaLinha.insertCell(0);
+                    const celulaStatus = novaLinha.insertCell(1);
+
+                    celulaNomeCompleto.textContent = funcionario.nomeCompleto;
+
+                    const registrosRef = ref(db, `registros/${cpf}`);
+                    get(registrosRef).then(snapshot => {
                         if (snapshot.exists()) {
-                            const func = snapshot.val();
-                            const novaLinha = dashboardTabela.insertRow();
-                            const celulaNomeCompleto = novaLinha.insertCell(0);
-                            const celulaStatus = novaLinha.insertCell(1);
+                            const registros = snapshot.val();
+                            const dias = Object.keys(registros).sort((a, b) => new Date(b) - new Date(a));
+                            const ultimoRegistro = registros[dias[0]];
 
-                            celulaNomeCompleto.textContent = func.nomeCompleto;
-                            celulaStatus.textContent = funcionario.status;
+                            celulaStatus.textContent = obterStatus(ultimoRegistro);
+                        } else {
+                            celulaStatus.textContent = 'Desconhecido';
                         }
+                    }).catch(() => {
+                        celulaStatus.textContent = 'Desconhecido';
                     });
                 });
-            });
+            }
         }
 
-        function obterStatusFuncionario(ultimoRegistro) {
-            if (ultimoRegistro.tipo === 'saida') return 'Saiu';
-            if (ultimoRegistro.tipo === 'retorno') return 'Presente';
-            if (ultimoRegistro.tipo === 'pausa') return 'Em Pausa';
-            if (ultimoRegistro.tipo === 'entrada') return 'Presente';
-            return 'Desconhecido';
+        function obterStatus(registro) {
+            if (!registro.entrada) {
+                return 'Ausente';
+            } else if (registro.saida) {
+                return 'Saiu';
+            } else if (registro.retorno) {
+                return 'Trabalhando';
+            } else if (registro.pausa) {
+                return 'Em Pausa';
+            } else {
+                return 'Desconhecido';
+            }
         }
 
         window.toggleSubmenu = toggleSubmenu;
