@@ -152,6 +152,7 @@
                         <th>Retorno</th>
                         <th>Saída</th>
                         <th>Horas Trabalhadas</th>
+                        <th>Horas Extras</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -165,14 +166,15 @@
         </div>
         <div id="dashboard" class="section">
             <h2>Dashboard</h2>
-            <table>
+            <table id="tabelaDashboard">
                 <thead>
                     <tr>
-                        <th>Nome</th>
+                        <th>Nome Completo</th>
+                        <th>CPF</th>
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody id="dashboardTabela">
+                <tbody>
                     <!-- Status dos funcionários serão inseridos aqui -->
                 </tbody>
             </table>
@@ -198,7 +200,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             carregarFuncionarios();
             carregarFiltroFuncionarios();
-            carregarStatus();
+            carregarDashboard();
         });
 
         function toggleSubmenu(submenuId) {
@@ -344,7 +346,8 @@
             const celulaRetorno = novaLinha.insertCell(3);
             const celulaSaida = novaLinha.insertCell(4);
             const celulaHorasTrabalhadas = novaLinha.insertCell(5);
-            const celulaAcoes = novaLinha.insertCell(6);
+            const celulaHorasExtras = novaLinha.insertCell(6);
+            const celulaAcoes = novaLinha.insertCell(7);
 
             celulaData.textContent = `${registro.data.split('-').reverse().join('/')}`;
             celulaEntrada.innerHTML = `<input type="time" class="editable" value="${registro.entrada ? extrairHora(registro.entrada) : ''}" data-cpf="${registro.cpf}" data-tipo="entrada" data-data="${registro.data}">`;
@@ -352,6 +355,7 @@
             celulaRetorno.innerHTML = `<input type="time" class="editable" value="${registro.retorno ? extrairHora(registro.retorno) : ''}" data-cpf="${registro.cpf}" data-tipo="retorno" data-data="${registro.data}">`;
             celulaSaida.innerHTML = `<input type="time" class="editable" value="${registro.saida ? extrairHora(registro.saida) : ''}" data-cpf="${registro.cpf}" data-tipo="saida" data-data="${registro.data}">`;
             celulaHorasTrabalhadas.textContent = calcularHorasTrabalhadas(registro);
+            celulaHorasExtras.textContent = calcularHorasExtras(registro);
             celulaAcoes.innerHTML = `<button onclick="salvarAlteracao('${registro.data}', '${registro.cpf}')">Salvar</button>`;
         }
 
@@ -376,14 +380,17 @@
             if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
                 const dbRefFuncionarios = ref(db, 'funcionarios');
                 const dbRefRegistros = ref(db, 'registros');
+                const dbRefStatus = ref(db, 'status');
 
                 await remove(dbRefFuncionarios);
                 await remove(dbRefRegistros);
+                await remove(dbRefStatus);
 
                 alert('Todos os dados foram limpos.');
                 carregarFuncionarios();
                 carregarFiltroFuncionarios();
                 document.getElementById('registrosTabelaAdmin').innerHTML = '';
+                document.getElementById('tabelaDashboard').getElementsByTagName('tbody')[0].innerHTML = '';
             }
         }
 
@@ -408,22 +415,38 @@
             return '';
         }
 
-        function carregarStatus() {
-            const statusRef = ref(db, 'status');
-            onValue(statusRef, snapshot => {
-                const tabela = document.getElementById('dashboardTabela');
-                tabela.innerHTML = ''; // Limpar a tabela
+        function calcularHorasExtras(registro) {
+            const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+            if (horasTrabalhadas > 8) {
+                return (horasTrabalhadas - 8).toFixed(2); // Subtrair 8 horas e retornar com 2 casas decimais
+            }
+            return '0.00';
+        }
+
+        async function carregarDashboard() {
+            const dbRef = ref(db, 'status');
+            onValue(dbRef, (snapshot) => {
+                const tabelaDashboard = document.getElementById('tabelaDashboard').getElementsByTagName('tbody')[0];
+                tabelaDashboard.innerHTML = ''; // Limpar a tabela
 
                 if (snapshot.exists()) {
                     const statusData = snapshot.val();
                     Object.keys(statusData).forEach(cpf => {
                         const status = statusData[cpf].status;
-                        const novaLinha = tabela.insertRow();
-                        const celulaNome = novaLinha.insertCell(0);
-                        const celulaStatus = novaLinha.insertCell(1);
+                        const funcionarioRef = ref(db, `funcionarios/${cpf}`);
+                        get(funcionarioRef).then(funcSnapshot => {
+                            if (funcSnapshot.exists()) {
+                                const funcionario = funcSnapshot.val();
+                                const novaLinha = tabelaDashboard.insertRow();
+                                const celulaNomeCompleto = novaLinha.insertCell(0);
+                                const celulaCpf = novaLinha.insertCell(1);
+                                const celulaStatus = novaLinha.insertCell(2);
 
-                        celulaNome.textContent = cpf; // Substitua pelo nome do funcionário se disponível
-                        celulaStatus.textContent = status;
+                                celulaNomeCompleto.textContent = funcionario.nomeCompleto;
+                                celulaCpf.textContent = funcionario.cpf;
+                                celulaStatus.textContent = status;
+                            }
+                        });
                     });
                 }
             });
