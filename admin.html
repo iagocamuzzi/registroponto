@@ -173,14 +173,14 @@
                     </tr>
                 </thead>
                 <tbody id="dashboardTabela">
-                    <!-- Dados do dashboard serão inseridos aqui -->
+                    <!-- Status dos funcionários serão inseridos aqui -->
                 </tbody>
             </table>
         </div>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, get, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
@@ -232,6 +232,7 @@
             document.getElementById('cadastroForm').reset();
             carregarFuncionarios();
             carregarFiltroFuncionarios();
+            carregarDashboard();
         }
 
         async function carregarFuncionarios() {
@@ -370,6 +371,7 @@
 
             alert('Alterações salvas com sucesso!');
             carregarRegistrosFuncionario();
+            carregarDashboard();
         }
 
         async function limparDados() {
@@ -383,6 +385,7 @@
                 alert('Todos os dados foram limpos.');
                 carregarFuncionarios();
                 carregarFiltroFuncionarios();
+                carregarDashboard();
                 document.getElementById('registrosTabelaAdmin').innerHTML = '';
             }
         }
@@ -411,47 +414,40 @@
         async function carregarDashboard() {
             const dbRef = ref(db, 'funcionarios');
             const snapshot = await get(dbRef);
-
-            const dashboardTabela = document.getElementById('dashboardTabela');
-            dashboardTabela.innerHTML = ''; // Limpar a tabela
+            const tabelaDashboard = document.getElementById('dashboardTabela');
+            tabelaDashboard.innerHTML = ''; // Limpar a tabela
 
             if (snapshot.exists()) {
                 const funcionarios = snapshot.val();
-                Object.keys(funcionarios).forEach(cpf => {
+                Object.keys(funcionarios).forEach(async cpf => {
                     const funcionario = funcionarios[cpf];
-                    const novaLinha = dashboardTabela.insertRow();
+                    const novaLinha = tabelaDashboard.insertRow();
                     const celulaNomeCompleto = novaLinha.insertCell(0);
                     const celulaStatus = novaLinha.insertCell(1);
 
                     celulaNomeCompleto.textContent = funcionario.nomeCompleto;
 
-                    const registrosRef = ref(db, `registros/${cpf}`);
-                    get(registrosRef).then(snapshot => {
-                        if (snapshot.exists()) {
-                            const registros = snapshot.val();
-                            const dias = Object.keys(registros).sort((a, b) => new Date(b) - new Date(a));
-                            const ultimoRegistro = registros[dias[0]];
+                    const dbRefRegistros = ref(db, `registros/${cpf}`);
+                    const snapshotRegistros = await get(dbRefRegistros);
+                    const registros = snapshotRegistros.exists() ? snapshotRegistros.val() : {};
 
-                            celulaStatus.textContent = obterStatus(ultimoRegistro);
-                        } else {
-                            celulaStatus.textContent = 'Desconhecido';
-                        }
-                    }).catch(() => {
-                        celulaStatus.textContent = 'Desconhecido';
-                    });
+                    const hoje = new Date().toISOString().split('T')[0];
+                    const ultimoRegistro = registros[hoje] || {};
+
+                    celulaStatus.textContent = obterStatus(ultimoRegistro);
                 });
             }
         }
 
         function obterStatus(registro) {
-            if (!registro.entrada) {
-                return 'Ausente';
-            } else if (registro.saida) {
-                return 'Saiu';
+            if (registro.saida) {
+                return 'Fim de expediente';
             } else if (registro.retorno) {
-                return 'Trabalhando';
+                return 'Em pausa';
             } else if (registro.pausa) {
-                return 'Em Pausa';
+                return 'Em pausa';
+            } else if (registro.entrada) {
+                return 'Presente';
             } else {
                 return 'Desconhecido';
             }
@@ -466,6 +462,7 @@
         window.carregarRegistrosFuncionario = carregarRegistrosFuncionario;
         window.salvarAlteracao = salvarAlteracao;
         window.limparDados = limparDados;
+        window.carregarDashboard = carregarDashboard;
     </script>
 </body>
 </html>
