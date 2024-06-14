@@ -87,26 +87,6 @@
             border: none;
             background-color: transparent;
         }
-        .status-container {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-        }
-        .status-column {
-            flex: 1;
-            margin: 0 10px;
-        }
-        .status-column h2 {
-            text-align: center;
-        }
-        .status-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        .status-list li {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
     </style>
 </head>
 <body>
@@ -122,7 +102,7 @@
             <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
         </a>
         <a href="#" onclick="showSection('dashboard')">
-            <img src="https://img.icons8.com/material-outlined/24/ffffff/monitor.png"/> Dashboard
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/dashboard.png"/> Dashboard
         </a>
     </div>
     <div class="container">
@@ -184,20 +164,18 @@
             </div>
         </div>
         <div id="dashboard" class="section">
-            <div class="status-container">
-                <div class="status-column">
-                    <h2>Presentes</h2>
-                    <ul id="presentesList" class="status-list"></ul>
-                </div>
-                <div class="status-column">
-                    <h2>Em Pausa</h2>
-                    <ul id="pausaList" class="status-list"></ul>
-                </div>
-                <div class="status-column">
-                    <h2>Saída</h2>
-                    <ul id="saidaList" class="status-list"></ul>
-                </div>
-            </div>
+            <h2>Dashboard</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome Completo</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="dashboardTabela">
+                    <!-- Dados do dashboard serão inseridos aqui -->
+                </tbody>
+            </table>
         </div>
     </div>
     <script type="module">
@@ -220,7 +198,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             carregarFuncionarios();
             carregarFiltroFuncionarios();
-            atualizarDashboard();
+            carregarDashboard();
         });
 
         function toggleSubmenu(submenuId) {
@@ -430,66 +408,42 @@
             return '';
         }
 
-        function atualizarDashboard() {
-            const presentesList = document.getElementById('presentesList');
-            const pausaList = document.getElementById('pausaList');
-            const saidaList = document.getElementById('saidaList');
+        function carregarDashboard() {
+            const dbRef = ref(db, 'registros');
+            onValue(dbRef, snapshot => {
+                const dashboardTabela = document.getElementById('dashboardTabela');
+                dashboardTabela.innerHTML = ''; // Limpar a tabela
 
-            onValue(ref(db, 'registros'), snapshot => {
-                const registros = snapshot.val();
-                const dataAtual = new Date().toISOString().split('T')[0];
+                const registros = snapshot.exists() ? snapshot.val() : {};
+                const funcionarios = Object.keys(registros).map(cpf => {
+                    const ultimoRegistro = Object.values(registros[cpf]).reduce((acc, cur) => (new Date(acc.dataHora) > new Date(cur.dataHora) ? acc : cur));
+                    const status = obterStatusFuncionario(ultimoRegistro);
+                    return { cpf, status };
+                });
 
-                const presentes = [];
-                const emPausa = [];
-                const emSaida = [];
+                funcionarios.forEach(funcionario => {
+                    const dbRefFuncionario = ref(db, `funcionarios/${funcionario.cpf}`);
+                    get(dbRefFuncionario).then(snapshot => {
+                        if (snapshot.exists()) {
+                            const func = snapshot.val();
+                            const novaLinha = dashboardTabela.insertRow();
+                            const celulaNomeCompleto = novaLinha.insertCell(0);
+                            const celulaStatus = novaLinha.insertCell(1);
 
-                if (registros) {
-                    Object.keys(registros).forEach(cpf => {
-                        const registro = registros[cpf][dataAtual];
-                        if (registro) {
-                            if (registro.saida) {
-                                emSaida.push(cpf);
-                            } else if (registro.retorno && !registro.saida) {
-                                presentes.push(cpf);
-                            } else if (registro.pausa && !registro.retorno) {
-                                emPausa.push(cpf);
-                            } else if (registro.entrada && !registro.pausa && !registro.retorno && !registro.saida) {
-                                presentes.push(cpf);
-                            }
+                            celulaNomeCompleto.textContent = func.nomeCompleto;
+                            celulaStatus.textContent = funcionario.status;
                         }
                     });
-                }
-
-                presentesList.innerHTML = '';
-                pausaList.innerHTML = '';
-                saidaList.innerHTML = '';
-
-                presentes.forEach(cpf => {
-                    const funcionario = getFuncionario(cpf);
-                    if (funcionario) {
-                        presentesList.innerHTML += `<li>${funcionario.nomeCompleto}</li>`;
-                    }
-                });
-
-                emPausa.forEach(cpf => {
-                    const funcionario = getFuncionario(cpf);
-                    if (funcionario) {
-                        pausaList.innerHTML += `<li>${funcionario.nomeCompleto}</li>`;
-                    }
-                });
-
-                emSaida.forEach(cpf => {
-                    const funcionario = getFuncionario(cpf);
-                    if (funcionario) {
-                        saidaList.innerHTML += `<li>${funcionario.nomeCompleto}</li>`;
-                    }
                 });
             });
         }
 
-        function getFuncionario(cpf) {
-            const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-            return funcionarios.find(funcionario => funcionario.cpf === cpf);
+        function obterStatusFuncionario(ultimoRegistro) {
+            if (ultimoRegistro.tipo === 'saida') return 'Saiu';
+            if (ultimoRegistro.tipo === 'retorno') return 'Presente';
+            if (ultimoRegistro.tipo === 'pausa') return 'Em Pausa';
+            if (ultimoRegistro.tipo === 'entrada') return 'Presente';
+            return 'Desconhecido';
         }
 
         window.toggleSubmenu = toggleSubmenu;
