@@ -98,13 +98,12 @@
             <a href="#" onclick="showSection('novoCadastro')">Novo Cadastro</a>
             <a href="#" onclick="showSection('consultarCadastro')">Consultar</a>
         </div>
-        <a href="#" onclick="toggleSubmenu('relatoriosSubmenu')">
+        <a href="#" onclick="showSection('relatorios')">
             <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
         </a>
-        <div id="relatoriosSubmenu" class="submenu">
-            <a href="#" onclick="showSection('relatorios')">Registros</a>
-            <a href="#" onclick="showSection('resumos')">Resumos</a>
-        </div>
+        <a href="#" onclick="showSection('dashboard')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/dashboard.png"/> Dashboard
+        </a>
     </div>
     <div class="container">
         <h1>Administração de Pontos</h1>
@@ -165,20 +164,8 @@
                 <button onclick="limparDados()">Limpar Todos os Dados</button>
             </div>
         </div>
-        <div id="resumos" class="section">
-            <h2>Resumo Mensal</h2>
-            <div class="filter">
-                <label for="resumoFuncionario">Selecionar Funcionário:</label>
-                <select id="resumoFuncionario" onchange="carregarResumoFuncionario()">
-                    <option value="">Selecione um funcionário</option>
-                </select>
-            </div>
-            <div id="resumoMes">
-                <!-- Resumo do mês será inserido aqui -->
-            </div>
-        </div>
         <div id="dashboard" class="section">
-            <h2>Dashboard</h2>
+            <h2>Dashboard de Funcionários</h2>
             <table id="tabelaDashboard">
                 <thead>
                     <tr>
@@ -248,7 +235,6 @@
             document.getElementById('cadastroForm').reset();
             carregarFuncionarios();
             carregarFiltroFuncionarios();
-            carregarResumoFuncionarios();
         }
 
         async function carregarFuncionarios() {
@@ -289,25 +275,6 @@
                     option.value = funcionario.cpf;
                     option.textContent = funcionario.nomeCompleto;
                     filtroFuncionario.appendChild(option);
-                });
-            }
-        }
-
-        async function carregarResumoFuncionarios() {
-            const dbRef = ref(db, 'funcionarios');
-            const snapshot = await get(dbRef);
-
-            const resumoFuncionario = document.getElementById('resumoFuncionario');
-            resumoFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
-
-            if (snapshot.exists()) {
-                const funcionarios = snapshot.val();
-                Object.keys(funcionarios).forEach(cpf => {
-                    const funcionario = funcionarios[cpf];
-                    const option = document.createElement('option');
-                    option.value = funcionario.cpf;
-                    option.textContent = funcionario.nomeCompleto;
-                    resumoFuncionario.appendChild(option);
                 });
             }
         }
@@ -410,64 +377,6 @@
             carregarRegistrosFuncionario();
         }
 
-        async function carregarResumoFuncionario() {
-            const cpf = document.getElementById('resumoFuncionario').value;
-            if (!cpf) {
-                document.getElementById('resumoMes').innerHTML = '';
-                return;
-            }
-
-            const dbRef = ref(db, `registros/${cpf}`);
-            const snapshot = await get(dbRef);
-
-            let totalHorasTrabalhadas = 0;
-            let totalHorasExtras = 0;
-            let diasTrabalhados = 0;
-
-            if (snapshot.exists()) {
-                const registros = snapshot.val();
-                Object.keys(registros).forEach(data => {
-                    const registro = registros[data];
-                    const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro)) || 0;
-                    const horasExtras = parseFloat(calcularHorasExtras(registro)) || 0;
-
-                    if (horasTrabalhadas > 0) diasTrabalhados++;
-                    totalHorasTrabalhadas += horasTrabalhadas;
-                    totalHorasExtras += horasExtras;
-                });
-            }
-
-            document.getElementById('resumoMes').innerHTML = `
-                <p>Total de Horas Trabalhadas: ${totalHorasTrabalhadas.toFixed(2)} horas</p>
-                <p>Total de Horas Extras: ${totalHorasExtras.toFixed(2)} horas</p>
-                <p>Total de Dias Trabalhados: ${diasTrabalhados} dias</p>
-            `;
-        }
-
-        function calcularHorasTrabalhadas(registro) {
-            const entrada = registro.entrada ? new Date(`1970-01-01T${extrairHora(registro.entrada)}`) : null;
-            const pausa = registro.pausa ? new Date(`1970-01-01T${extrairHora(registro.pausa)}`) : null;
-            const retorno = registro.retorno ? new Date(`1970-01-01T${extrairHora(registro.retorno)}`) : null;
-            const saida = registro.saida ? new Date(`1970-01-01T${extrairHora(registro.saida)}`) : null;
-
-            if (entrada && saida) {
-                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
-                if (pausa && retorno) {
-                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
-                }
-                return horasTrabalhadas.toFixed(2); // Retornar com 2 casas decimais
-            }
-            return '0.00';
-        }
-
-        function calcularHorasExtras(registro) {
-            const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-            if (horasTrabalhadas > 8) {
-                return (horasTrabalhadas - 8).toFixed(2); // Subtrair 8 horas e retornar com 2 casas decimais
-            }
-            return '0.00';
-        }
-
         async function limparDados() {
             if (confirm('Tem certeza de que deseja limpar todos os dados?')) {
                 const dbRefFuncionarios = ref(db, 'funcionarios');
@@ -535,6 +444,30 @@
             return time;
         }
 
+        function calcularHorasTrabalhadas(registro) {
+            const entrada = registro.entrada ? new Date(`1970-01-01T${extrairHora(registro.entrada)}`) : null;
+            const pausa = registro.pausa ? new Date(`1970-01-01T${extrairHora(registro.pausa)}`) : null;
+            const retorno = registro.retorno ? new Date(`1970-01-01T${extrairHora(registro.retorno)}`) : null;
+            const saida = registro.saida ? new Date(`1970-01-01T${extrairHora(registro.saida)}`) : null;
+
+            if (entrada && saida) {
+                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                if (pausa && retorno) {
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                }
+                return horasTrabalhadas.toFixed(2); // Retornar com 2 casas decimais
+            }
+            return '';
+        }
+
+        function calcularHorasExtras(registro) {
+            const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+            if (horasTrabalhadas > 8) {
+                return (horasTrabalhadas - 8).toFixed(2); // Subtrair 8 horas e retornar com 2 casas decimais
+            }
+            return '0.00';
+        }
+
         window.toggleSubmenu = toggleSubmenu;
         window.showSection = showSection;
         window.cadastrarFuncionario = cadastrarFuncionario;
@@ -543,7 +476,6 @@
         window.verDetalhesFuncionario = verDetalhesFuncionario;
         window.carregarRegistrosFuncionario = carregarRegistrosFuncionario;
         window.salvarAlteracao = salvarAlteracao;
-        window.carregarResumoFuncionario = carregarResumoFuncionario;
         window.limparDados = limparDados;
     </script>
 </body>
