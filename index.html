@@ -105,11 +105,6 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .total-horas {
-            margin-top: 20px;
-            font-size: 18px;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -117,7 +112,7 @@
         <h1>Sistema de Ponto Eletrônico</h1>
         <form id="acessoForm">
             <h2>Acesso ao Registro de Ponto</h2>
-            <input type="number" id="cpfAcesso" placeholder="CPF do Funcionário" required>
+            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
             <div class="admin-button" onclick="irParaAdmin()">Painel</div>
         </form>
@@ -153,7 +148,6 @@
                 </tbody>
             </table>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
-            <div id="totalHorasTrabalhadas" class="total-horas"></div>
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
@@ -208,10 +202,24 @@
             adicionarRegistroNaTabela(registro);
             document.getElementById(tipo).classList.add('disabled');
 
-            if (tipo === 'saida') {
-                document.getElementById('gerarPDF').style.display = 'block';
-                calcularHorasTrabalhadas();
+            const statusRef = db.ref(`status/${funcionario.cpf}`);
+            let statusText = '';
+            switch (tipo) {
+                case 'entrada':
+                    statusText = 'Trabalhando (Turno 1)';
+                    break;
+                case 'pausa':
+                    statusText = 'Intervalo';
+                    break;
+                case 'retorno':
+                    statusText = 'Trabalhando (Turno 2)';
+                    break;
+                case 'saida':
+                    statusText = 'Fim de Expediente';
+                    document.getElementById('gerarPDF').style.display = 'block';
+                    break;
             }
+            statusRef.set({ nome: funcionario.nomeCompleto, status: statusText });
         }
 
         function salvarRegistroLocalmente(registro) {
@@ -271,36 +279,6 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        function calcularHorasTrabalhadas() {
-            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toISOString().split('T')[0];
-            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
-            dbRef.get().then(snapshot => {
-                if (snapshot.exists()) {
-                    const registros = snapshot.val();
-                    const entrada = registros.entrada ? new Date(`1970-01-01T${extrairHora(registros.entrada)}`) : null;
-                    const pausa = registros.pausa ? new Date(`1970-01-01T${extrairHora(registros.pausa)}`) : null;
-                    const retorno = registros.retorno ? new Date(`1970-01-01T${extrairHora(registros.retorno)}`) : null;
-                    const saida = registros.saida ? new Date(`1970-01-01T${extrairHora(registros.saida)}`) : null;
-
-                    if (entrada && saida) {
-                        let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
-                        if (pausa && retorno) {
-                            horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
-                        }
-                        document.getElementById('totalHorasTrabalhadas').innerText = `Total de horas trabalhadas: ${horasTrabalhadas.toFixed(2)} horas`;
-                    } else {
-                        document.getElementById('totalHorasTrabalhadas').innerText = `Total de horas trabalhadas: 0.00 horas`;
-                    }
-                }
-            });
-        }
-
-        function extrairHora(dataHora) {
-            const [date, time] = dataHora.split(' ');
-            return time;
-        }
-
         function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -326,11 +304,11 @@
         }
 
         function irParaAdmin() {
-            const senha = prompt('Digite a senha para acessar o painel:');
-            if (senha === '021092') {
+            const senha = prompt("Digite a senha para acessar o painel de administração:");
+            if (senha === "021092") {
                 window.location.href = 'admin.html';
             } else {
-                alert('Senha incorreta.');
+                alert("Senha incorreta!");
             }
         }
 
