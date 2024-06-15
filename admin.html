@@ -101,6 +101,12 @@
         <a href="#" onclick="showSection('relatorios')">
             <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
         </a>
+        <a href="#" onclick="showSection('dashboard')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/dashboard-layout.png"/> Dashboard
+        </a>
+        <a href="#" onclick="showSection('resumoMes')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/calendar.png"/> Resumo do Mês
+        </a>
     </div>
     <div class="container">
         <h1>Administração de Pontos</h1>
@@ -160,36 +166,39 @@
             <div class="admin-buttons">
                 <button onclick="limparDados()">Limpar Todos os Dados</button>
             </div>
-            <div class="admin-buttons">
-                <button onclick="mostrarResumo()">Resumo do Mês</button>
-            </div>
         </div>
         <div id="dashboard" class="section">
             <h2>Dashboard</h2>
-            <table>
+            <table id="dashboardTabela">
                 <thead>
                     <tr>
                         <th>Funcionário</th>
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody id="dashboardTabela">
-                    <!-- Dados do dashboard serão inseridos aqui -->
+                <tbody>
+                    <!-- Status dos funcionários serão inseridos aqui -->
                 </tbody>
             </table>
         </div>
-        <div id="resumo" class="section">
+        <div id="resumoMes" class="section">
             <h2>Resumo do Mês</h2>
-            <table>
+            <div class="filter">
+                <label for="filterResumoFuncionario">Selecionar Funcionário:</label>
+                <select id="filterResumoFuncionario" onchange="mostrarResumo()">
+                    <option value="">Selecione um funcionário</option>
+                </select>
+            </div>
+            <table id="resumoTabela">
                 <thead>
                     <tr>
-                        <th>Funcionário</th>
+                        <th>Nome Completo</th>
                         <th>Horas Trabalhadas</th>
                         <th>Horas Extras</th>
                         <th>Dias Trabalhados</th>
                     </tr>
                 </thead>
-                <tbody id="resumoTabela">
+                <tbody>
                     <!-- Resumo do mês será inserido aqui -->
                 </tbody>
             </table>
@@ -279,16 +288,22 @@
             const snapshot = await get(dbRef);
 
             const filtroFuncionario = document.getElementById('filterFuncionario');
+            const filtroResumoFuncionario = document.getElementById('filterResumoFuncionario');
             filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
+            filtroResumoFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
 
             if (snapshot.exists()) {
                 const funcionarios = snapshot.val();
                 Object.keys(funcionarios).forEach(cpf => {
                     const funcionario = funcionarios[cpf];
-                    const option = document.createElement('option');
-                    option.value = funcionario.cpf;
-                    option.textContent = funcionario.nomeCompleto;
-                    filtroFuncionario.appendChild(option);
+                    const optionFuncionario = document.createElement('option');
+                    const optionResumoFuncionario = document.createElement('option');
+                    optionFuncionario.value = funcionario.cpf;
+                    optionFuncionario.textContent = funcionario.nomeCompleto;
+                    optionResumoFuncionario.value = funcionario.cpf;
+                    optionResumoFuncionario.textContent = funcionario.nomeCompleto;
+                    filtroFuncionario.appendChild(optionFuncionario);
+                    filtroResumoFuncionario.appendChild(optionResumoFuncionario);
                 });
             }
         }
@@ -436,89 +451,70 @@
         }
 
         function carregarDashboard() {
-            const dbRef = ref(db, 'funcionarios');
-            onValue(dbRef, snapshot => {
-                const funcionarios = snapshot.exists() ? snapshot.val() : {};
-                const tabela = document.getElementById('dashboardTabela');
-                tabela.innerHTML = '';
+            const dbRef = ref(db, 'status');
+            onValue(dbRef, (snapshot) => {
+                const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
+                tabela.innerHTML = ''; // Limpar a tabela
 
-                Object.keys(funcionarios).forEach(cpf => {
-                    const funcionario = funcionarios[cpf];
-                    const registroRef = ref(db, `registros/${cpf}/${new Date().toISOString().split('T')[0]}`);
-                    get(registroRef).then(snapshot => {
-                        const registro = snapshot.exists() ? snapshot.val() : {};
-                        const status = obterStatus(registro);
-                        adicionarLinhaDashboard(tabela, funcionario.nomeCompleto, status);
+                if (snapshot.exists()) {
+                    const status = snapshot.val();
+                    Object.keys(status).forEach(cpf => {
+                        const statusFuncionario = status[cpf];
+                        const novaLinha = tabela.insertRow();
+                        const celulaNome = novaLinha.insertCell(0);
+                        const celulaStatus = novaLinha.insertCell(1);
+
+                        celulaNome.textContent = statusFuncionario.nome;
+                        celulaStatus.textContent = statusFuncionario.status;
                     });
-                });
+                }
             });
-        }
-
-        function obterStatus(registro) {
-            if (registro.saida) {
-                return 'Fim de Expediente';
-            } else if (registro.retorno) {
-                return 'Trabalhando (Turno 2)';
-            } else if (registro.pausa) {
-                return 'Intervalo';
-            } else if (registro.entrada) {
-                return 'Trabalhando (Turno 1)';
-            } else {
-                return 'Desconhecido';
-            }
-        }
-
-        function adicionarLinhaDashboard(tabela, nomeCompleto, status) {
-            const novaLinha = tabela.insertRow();
-            const celulaNome = novaLinha.insertCell(0);
-            const celulaStatus = novaLinha.insertCell(1);
-
-            celulaNome.textContent = nomeCompleto;
-            celulaStatus.textContent = status;
         }
 
         async function mostrarResumo() {
-            const dbRef = ref(db, 'funcionarios');
+            const cpf = document.getElementById('filterResumoFuncionario').value;
+            if (!cpf) {
+                document.getElementById('resumoTabela').getElementsByTagName('tbody')[0].innerHTML = '';
+                return;
+            }
+
+            const dbRef = ref(db, `registros/${cpf}`);
             const snapshot = await get(dbRef);
-            const funcionarios = snapshot.exists() ? snapshot.val() : {};
-            const tabela = document.getElementById('resumoTabela');
-            tabela.innerHTML = '';
 
-            Object.keys(funcionarios).forEach(async cpf => {
-                const registrosRef = ref(db, `registros/${cpf}`);
-                const registrosSnapshot = await get(registrosRef);
-                const registros = registrosSnapshot.exists() ? registrosSnapshot.val() : {};
+            const tabela = document.getElementById('resumoTabela').getElementsByTagName('tbody')[0];
+            tabela.innerHTML = ''; // Limpar a tabela
 
-                let horasTrabalhadas = 0;
-                let horasExtras = 0;
+            if (snapshot.exists()) {
+                const registros = snapshot.val();
+                let totalHorasTrabalhadas = 0;
+                let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
-                Object.values(registros).forEach(registro => {
-                    if (registro.entrada && registro.saida) {
-                        const horasDia = calcularHorasTrabalhadas(registro);
-                        horasTrabalhadas += parseFloat(horasDia);
-                        if (horasDia > 8) {
-                            horasExtras += horasDia - 8;
-                        }
-                        diasTrabalhados++;
+                Object.keys(registros).forEach(dia => {
+                    const registro = registros[dia];
+                    const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+                    const horasExtras = parseFloat(calcularHorasExtras(registro));
+                    totalHorasTrabalhadas += horasTrabalhadas;
+                    totalHorasExtras += horasExtras;
+                    if (horasTrabalhadas > 0) {
+                        diasTrabalhados += 1;
                     }
                 });
 
-                adicionarLinhaResumo(tabela, funcionarios[cpf].nomeCompleto, horasTrabalhadas, horasExtras, diasTrabalhados);
-            });
-        }
+                const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
+                const funcionario = funcionarioSnapshot.val();
 
-        function adicionarLinhaResumo(tabela, nomeCompleto, horasTrabalhadas, horasExtras, diasTrabalhados) {
-            const novaLinha = tabela.insertRow();
-            const celulaNome = novaLinha.insertCell(0);
-            const celulaHorasTrabalhadas = novaLinha.insertCell(1);
-            const celulaHorasExtras = novaLinha.insertCell(2);
-            const celulaDiasTrabalhados = novaLinha.insertCell(3);
+                const novaLinha = tabela.insertRow();
+                const celulaNome = novaLinha.insertCell(0);
+                const celulaHorasTrabalhadas = novaLinha.insertCell(1);
+                const celulaHorasExtras = novaLinha.insertCell(2);
+                const celulaDiasTrabalhados = novaLinha.insertCell(3);
 
-            celulaNome.textContent = nomeCompleto;
-            celulaHorasTrabalhadas.textContent = horasTrabalhadas.toFixed(2);
-            celulaHorasExtras.textContent = horasExtras.toFixed(2);
-            celulaDiasTrabalhados.textContent = diasTrabalhados;
+                celulaNome.textContent = funcionario.nomeCompleto;
+                celulaHorasTrabalhadas.textContent = totalHorasTrabalhadas.toFixed(2);
+                celulaHorasExtras.textContent = totalHorasExtras.toFixed(2);
+                celulaDiasTrabalhados.textContent = diasTrabalhados;
+            }
         }
 
         window.toggleSubmenu = toggleSubmenu;
@@ -530,8 +526,8 @@
         window.carregarRegistrosFuncionario = carregarRegistrosFuncionario;
         window.salvarAlteracao = salvarAlteracao;
         window.limparDados = limparDados;
-        window.carregarDashboard = carregarDashboard;
         window.mostrarResumo = mostrarResumo;
+        window.carregarDashboard = carregarDashboard;
     </script>
 </body>
 </html>
