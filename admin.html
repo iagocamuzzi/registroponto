@@ -336,34 +336,35 @@
 
         async function carregarRegistrosFuncionario() {
             const cpf = document.getElementById('filterFuncionario').value;
-            const mesSelecionado = document.getElementById('filterMes').value;
-            if (!cpf || !mesSelecionado) {
+            const mes = document.getElementById('filterMes').value;
+
+            if (!cpf || !mes) {
                 document.getElementById('registrosTabelaAdmin').innerHTML = '';
                 return;
             }
 
-            const [ano, mes] = mesSelecionado.split('-');
-            const dbRef = ref(db, `registros/${cpf}/${ano}/${mes}`);
+            const dbRef = ref(db, `registros/${cpf}`);
             const snapshot = await get(dbRef);
 
             const tabela = document.getElementById('registrosTabelaAdmin');
             tabela.innerHTML = ''; // Limpar a tabela
 
-            const diasDoMes = obterDiasDoMesSelecionado(ano, mes);
+            const diasDoMes = obterDiasDoMes(mes);
             const registros = snapshot.exists() ? snapshot.val() : {};
 
             diasDoMes.forEach(dia => {
                 const registro = registros[dia] || { entrada: '', pausa: '', retorno: '', saida: '' };
-                adicionarRegistroNaTabela(tabela, { data: `${ano}-${mes}-${dia}`, ...registro, cpf });
+                adicionarRegistroNaTabela(tabela, { data: dia, ...registro, cpf });
             });
         }
 
-        function obterDiasDoMesSelecionado(ano, mes) {
+        function obterDiasDoMes(mes) {
+            const [ano, mesNum] = mes.split('-');
             const diasDoMes = [];
-            const totalDias = new Date(ano, mes, 0).getDate();
 
-            for (let dia = 1; dia <= totalDias; dia++) {
-                diasDoMes.push(String(dia).padStart(2, '0'));
+            for (let dia = 1; dia <= new Date(ano, mesNum, 0).getDate(); dia++) {
+                const data = new Date(ano, mesNum - 1, dia);
+                diasDoMes.push(data.toISOString().split('T')[0]);
             }
 
             return diasDoMes;
@@ -400,8 +401,7 @@
                 registroAtualizado[tipo] = valor ? `${data} ${valor}` : '';
             });
 
-            const [ano, mes, dia] = data.split('-');
-            const dbRef = ref(db, `registros/${cpf}/${ano}/${mes}/${dia}`);
+            const dbRef = ref(db, `registros/${cpf}/${data}`);
             await set(dbRef, registroAtualizado);
 
             alert('Alterações salvas com sucesso!');
@@ -480,9 +480,7 @@
                 return;
             }
 
-            const mesSelecionado = document.getElementById('filterMes').value;
-            const [ano, mes] = mesSelecionado.split('-');
-            const dbRef = ref(db, `registros/${cpf}/${ano}/${mes}`);
+            const dbRef = ref(db, `registros/${cpf}`);
             const snapshot = await get(dbRef);
 
             const tabela = document.getElementById('resumoTabela').getElementsByTagName('tbody')[0];
