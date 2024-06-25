@@ -182,7 +182,6 @@
                     <!-- Status dos funcionários serão inseridos aqui -->
                 </tbody>
             </table>
-            <button onclick="showResumo()">Resumo</button>
         </div>
         <div id="resumoMes" class="section">
             <h2>Resumo do Mês</h2>
@@ -343,16 +342,14 @@
                 return;
             }
 
-            const anoMes = mesSelecionado.split('-');
-            const ano = anoMes[0];
-            const mes = anoMes[1];
+            const [ano, mes] = mesSelecionado.split('-');
             const dbRef = ref(db, `registros/${cpf}/${ano}/${mes}`);
             const snapshot = await get(dbRef);
 
             const tabela = document.getElementById('registrosTabelaAdmin');
             tabela.innerHTML = ''; // Limpar a tabela
 
-            const diasDoMes = obterDiasDoMes(ano, mes);
+            const diasDoMes = obterDiasDoMesSelecionado(ano, mes);
             const registros = snapshot.exists() ? snapshot.val() : {};
 
             diasDoMes.forEach(dia => {
@@ -361,10 +358,11 @@
             });
         }
 
-        function obterDiasDoMes(ano, mes) {
+        function obterDiasDoMesSelecionado(ano, mes) {
             const diasDoMes = [];
-            for (let dia = 1; dia <= new Date(ano, mes, 0).getDate(); dia++) {
-                diasDoMes.push(dia.toString().padStart(2, '0'));
+            const data = new Date(ano, mes, 0);
+            for (let dia = 1; dia <= data.getDate(); dia++) {
+                diasDoMes.push(String(dia).padStart(2, '0'));
             }
             return diasDoMes;
         }
@@ -492,19 +490,15 @@
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
-                Object.keys(registros).forEach(ano => {
-                    Object.keys(registros[ano]).forEach(mes => {
-                        Object.keys(registros[ano][mes]).forEach(dia => {
-                            const registro = registros[ano][mes][dia];
-                            const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-                            const horasExtras = parseFloat(calcularHorasExtras(registro));
-                            totalHorasTrabalhadas += horasTrabalhadas;
-                            totalHorasExtras += horasExtras;
-                            if (horasTrabalhadas > 0) {
-                                diasTrabalhados += 1;
-                            }
-                        });
-                    });
+                Object.keys(registros).forEach(dia => {
+                    const registro = registros[dia];
+                    const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+                    const horasExtras = parseFloat(calcularHorasExtras(registro));
+                    totalHorasTrabalhadas += horasTrabalhadas;
+                    totalHorasExtras += horasExtras;
+                    if (horasTrabalhadas > 0) {
+                        diasTrabalhados += 1;
+                    }
                 });
 
                 const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
