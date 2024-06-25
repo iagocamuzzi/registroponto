@@ -115,10 +115,10 @@
                 <h2>Cadastro de Funcionário</h2>
                 <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
                 <input type="text" id="cpfCadastro" placeholder="CPF" required>
-                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
+                <input type="date" id="dataNascimentoCadastro" required>
                 <input type="email" id="emailCadastro" placeholder="Email" required>
                 <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
-                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
+                <input type="date" id="dataAdmissaoCadastro" required>
                 <input type="number" id="salarioCadastro" placeholder="Salário" required>
                 <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
             </form>
@@ -342,7 +342,9 @@
                 return;
             }
 
-            const [ano, mes] = mesSelecionado.split('-');
+            const ano = mesSelecionado.split('-')[0];
+            const mes = mesSelecionado.split('-')[1];
+
             const dbRef = ref(db, `registros/${cpf}/${ano}/${mes}`);
             const snapshot = await get(dbRef);
 
@@ -360,10 +362,12 @@
 
         function obterDiasDoMesSelecionado(ano, mes) {
             const diasDoMes = [];
-            const data = new Date(ano, mes, 0);
-            for (let dia = 1; dia <= data.getDate(); dia++) {
-                diasDoMes.push(String(dia).padStart(2, '0'));
+            const ultimoDia = new Date(ano, mes, 0).getDate();
+
+            for (let dia = 1; dia <= ultimoDia; dia++) {
+                diasDoMes.push(dia.toString().padStart(2, '0'));
             }
+
             return diasDoMes;
         }
 
@@ -398,7 +402,10 @@
                 registroAtualizado[tipo] = valor ? `${data} ${valor}` : '';
             });
 
-            const [ano, mes, dia] = data.split('-');
+            const ano = data.split('-')[0];
+            const mes = data.split('-')[1];
+            const dia = data.split('-')[2];
+
             const dbRef = ref(db, `registros/${cpf}/${ano}/${mes}/${dia}`);
             await set(dbRef, registroAtualizado);
 
@@ -490,15 +497,17 @@
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
-                Object.keys(registros).forEach(dia => {
-                    const registro = registros[dia];
-                    const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-                    const horasExtras = parseFloat(calcularHorasExtras(registro));
-                    totalHorasTrabalhadas += horasTrabalhadas;
-                    totalHorasExtras += horasExtras;
-                    if (horasTrabalhadas > 0) {
-                        diasTrabalhados += 1;
-                    }
+                Object.keys(registros).forEach(mes => {
+                    Object.keys(registros[mes]).forEach(dia => {
+                        const registro = registros[mes][dia];
+                        const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+                        const horasExtras = parseFloat(calcularHorasExtras(registro));
+                        totalHorasTrabalhadas += horasTrabalhadas;
+                        totalHorasExtras += horasExtras;
+                        if (horasTrabalhadas > 0) {
+                            diasTrabalhados += 1;
+                        }
+                    });
                 });
 
                 const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
