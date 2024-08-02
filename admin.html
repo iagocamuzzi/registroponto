@@ -145,8 +145,6 @@
                 <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
                     <option value="">Selecione um funcionário</option>
                 </select>
-                <label for="filterMes">Selecionar Mês:</label>
-                <input type="month" id="filterMes" onchange="carregarRegistrosFuncionario()">
             </div>
             <table>
                 <thead>
@@ -336,9 +334,7 @@
 
         async function carregarRegistrosFuncionario() {
             const cpf = document.getElementById('filterFuncionario').value;
-            const mes = document.getElementById('filterMes').value;
-
-            if (!cpf || !mes) {
+            if (!cpf) {
                 document.getElementById('registrosTabelaAdmin').innerHTML = '';
                 return;
             }
@@ -349,7 +345,7 @@
             const tabela = document.getElementById('registrosTabelaAdmin');
             tabela.innerHTML = ''; // Limpar a tabela
 
-            const diasDoMes = obterDiasDoMes(mes);
+            const diasDoMes = obterDiasDoMesAtual();
             const registros = snapshot.exists() ? snapshot.val() : {};
 
             diasDoMes.forEach(dia => {
@@ -358,12 +354,14 @@
             });
         }
 
-        function obterDiasDoMes(mes) {
-            const [ano, mesNum] = mes.split('-');
+        function obterDiasDoMesAtual() {
             const diasDoMes = [];
+            const dataAtual = new Date();
+            const ano = dataAtual.getFullYear();
+            const mes = dataAtual.getMonth();
 
-            for (let dia = 1; dia <= new Date(ano, mesNum, 0).getDate(); dia++) {
-                const data = new Date(ano, mesNum - 1, dia);
+            for (let dia = 1; dia <= new Date(ano, mes + 1, 0).getDate(); dia++) {
+                const data = new Date(ano, mes, dia);
                 diasDoMes.push(data.toISOString().split('T')[0]);
             }
 
@@ -488,18 +486,24 @@
 
             if (snapshot.exists()) {
                 const registros = snapshot.val();
+                const mesAtual = new Date().getMonth();
+                const anoAtual = new Date().getFullYear();
+
                 let totalHorasTrabalhadas = 0;
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
                 Object.keys(registros).forEach(dia => {
-                    const registro = registros[dia];
-                    const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-                    const horasExtras = parseFloat(calcularHorasExtras(registro));
-                    totalHorasTrabalhadas += horasTrabalhadas;
-                    totalHorasExtras += horasExtras;
-                    if (horasTrabalhadas > 0) {
-                        diasTrabalhados += 1;
+                    const data = new Date(dia);
+                    if (data.getMonth() === mesAtual && data.getFullYear() === anoAtual) {
+                        const registro = registros[dia];
+                        const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+                        const horasExtras = parseFloat(calcularHorasExtras(registro));
+                        totalHorasTrabalhadas += horasTrabalhadas;
+                        totalHorasExtras += horasExtras;
+                        if (horasTrabalhadas > 0) {
+                            diasTrabalhados += 1;
+                        }
                     }
                 });
 
