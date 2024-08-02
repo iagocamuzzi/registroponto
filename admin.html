@@ -473,10 +473,6 @@
 
         async function mostrarResumo() {
             const cpf = document.getElementById('filterResumoFuncionario').value;
-            const dataAtual = new Date();
-            const mesAtual = dataAtual.getMonth();
-            const anoAtual = dataAtual.getFullYear();
-            
             if (!cpf) {
                 document.getElementById('resumoTabela').getElementsByTagName('tbody')[0].innerHTML = '';
                 return;
@@ -490,17 +486,18 @@
 
             if (snapshot.exists()) {
                 const registros = snapshot.val();
+                const dataAtual = new Date();
+                const mesAtual = dataAtual.getMonth();
+                const anoAtual = dataAtual.getFullYear();
+
                 let totalHorasTrabalhadas = 0;
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
                 Object.keys(registros).forEach(dia => {
-                    const registro = registros[dia];
                     const dataRegistro = new Date(dia);
-                    const mesRegistro = dataRegistro.getMonth();
-                    const anoRegistro = dataRegistro.getFullYear();
-
-                    if (mesRegistro === mesAtual && anoRegistro === anoAtual) {
+                    if (dataRegistro.getMonth() === mesAtual && dataRegistro.getFullYear() === anoAtual) {
+                        const registro = registros[dia];
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
