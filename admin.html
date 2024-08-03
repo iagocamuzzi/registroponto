@@ -206,6 +206,21 @@
                 </tbody>
             </table>
         </div>
+        <div id="editarFuncionario" class="section">
+            <form id="editarForm">
+                <h2>Editar Funcionário</h2>
+                <input type="text" id="editarNomeCompleto" placeholder="Nome Completo" required>
+                <input type="text" id="editarCpf" placeholder="CPF" required readonly>
+                <input type="date" id="editarDataNascimento" placeholder="Data de Nascimento" required>
+                <input type="email" id="editarEmail" placeholder="Email" required>
+                <input type="text" id="editarWhatsapp" placeholder="WhatsApp" required>
+                <input type="date" id="editarDataAdmissao" placeholder="Data de Admissão" required>
+                <input type="number" id="editarSalario" placeholder="Salário" required>
+                <input type="date" id="editarInicioFerias" placeholder="Início das Férias">
+                <input type="date" id="editarFimFerias" placeholder="Fim das Férias">
+                <button type="button" onclick="salvarEdicao()">Salvar</button>
+            </form>
+        </div>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -341,6 +356,51 @@
             `;
         }
 
+        async function editarFuncionario(cpf) {
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
+
+            if (snapshot.exists()) {
+                const funcionario = snapshot.val();
+                document.getElementById('editarNomeCompleto').value = funcionario.nomeCompleto;
+                document.getElementById('editarCpf').value = funcionario.cpf;
+                document.getElementById('editarDataNascimento').value = funcionario.dataNascimento;
+                document.getElementById('editarEmail').value = funcionario.email;
+                document.getElementById('editarWhatsapp').value = funcionario.whatsapp;
+                document.getElementById('editarDataAdmissao').value = funcionario.dataAdmissao;
+                document.getElementById('editarSalario').value = funcionario.salario;
+                document.getElementById('editarInicioFerias').value = funcionario.inicioFerias || '';
+                document.getElementById('editarFimFerias').value = funcionario.fimFerias || '';
+
+                showSection('editarFuncionario');
+            }
+        }
+
+        async function salvarEdicao() {
+            const nomeCompleto = document.getElementById('editarNomeCompleto').value.trim();
+            const cpf = document.getElementById('editarCpf').value.trim();
+            const dataNascimento = document.getElementById('editarDataNascimento').value;
+            const email = document.getElementById('editarEmail').value.trim();
+            const whatsapp = document.getElementById('editarWhatsapp').value.trim();
+            const dataAdmissao = document.getElementById('editarDataAdmissao').value;
+            const salario = document.getElementById('editarSalario').value.trim();
+            const inicioFerias = document.getElementById('editarInicioFerias').value;
+            const fimFerias = document.getElementById('editarFimFerias').value;
+
+            if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
+
+            alert('Dados do funcionário atualizados com sucesso!');
+            document.getElementById('editarForm').reset();
+            showSection('consultarCadastro');
+            carregarFuncionarios();
+        }
+
         async function carregarRegistrosFuncionario() {
             const cpf = document.getElementById('filterFuncionario').value;
             if (!cpf) {
@@ -461,35 +521,21 @@
 
         function carregarDashboard() {
             const dbRef = ref(db, 'status');
-            onValue(dbRef, async (snapshot) => {
+            onValue(dbRef, (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
                 tabela.innerHTML = ''; // Limpar a tabela
 
                 if (snapshot.exists()) {
                     const status = snapshot.val();
-                    for (const cpf of Object.keys(status)) {
+                    Object.keys(status).forEach(cpf => {
                         const statusFuncionario = status[cpf];
-                        const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
-                        const funcionario = funcionarioSnapshot.val();
-                        const hoje = new Date().toISOString().split('T')[0];
-
-                        let statusTexto = statusFuncionario.status;
-                        if (funcionario.inicioFerias && funcionario.fimFerias) {
-                            const inicioFerias = new Date(funcionario.inicioFerias);
-                            const fimFerias = new Date(funcionario.fimFerias);
-                            const hojeDate = new Date(hoje);
-                            if (hojeDate >= inicioFerias && hojeDate <= fimFerias) {
-                                statusTexto = 'Férias';
-                            }
-                        }
-
                         const novaLinha = tabela.insertRow();
                         const celulaNome = novaLinha.insertCell(0);
                         const celulaStatus = novaLinha.insertCell(1);
 
-                        celulaNome.textContent = funcionario.nomeCompleto;
-                        celulaStatus.textContent = statusTexto;
-                    }
+                        celulaNome.textContent = statusFuncionario.nome;
+                        celulaStatus.textContent = statusFuncionario.status;
+                    });
                 }
             });
         }
@@ -513,13 +559,13 @@
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
-                const mesAtual = new Date().getMonth();
-                const anoAtual = new Date().getFullYear();
-
                 Object.keys(registros).forEach(dia => {
                     const registro = registros[dia];
-                    const dataRegistro = new Date(dia);
-                    if (dataRegistro.getMonth() === mesAtual && dataRegistro.getFullYear() === anoAtual) {
+                    const data = new Date(dia);
+                    const mesAtual = new Date().getMonth();
+                    const mesRegistro = data.getMonth();
+
+                    if (mesAtual === mesRegistro) {
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
@@ -557,6 +603,8 @@
         window.limparDados = limparDados;
         window.mostrarResumo = mostrarResumo;
         window.carregarDashboard = carregarDashboard;
+        window.editarFuncionario = editarFuncionario;
+        window.salvarEdicao = salvarEdicao;
     </script>
 </body>
 </html>
