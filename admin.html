@@ -120,6 +120,8 @@
                 <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
                 <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
                 <input type="number" id="salarioCadastro" placeholder="Salário" required>
+                <input type="date" id="inicioFerias" placeholder="Início das Férias">
+                <input type="date" id="fimFerias" placeholder="Fim das Férias">
                 <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
             </form>
         </div>
@@ -246,6 +248,8 @@
             const whatsapp = document.getElementById('whatsappCadastro').value.trim();
             const dataAdmissao = document.getElementById('dataAdmissaoCadastro').value;
             const salario = document.getElementById('salarioCadastro').value.trim();
+            const inicioFerias = document.getElementById('inicioFerias').value;
+            const fimFerias = document.getElementById('fimFerias').value;
 
             if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
                 alert('Por favor, preencha todos os campos.');
@@ -253,7 +257,7 @@
             }
 
             const dbRef = ref(db, `funcionarios/${cpf}`);
-            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario });
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
 
             alert('Funcionário cadastrado com sucesso!');
             document.getElementById('cadastroForm').reset();
@@ -332,6 +336,8 @@
                 <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
                 <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
                 <p><strong>Salário:</strong> ${funcionario.salario}</p>
+                <p><strong>Início das Férias:</strong> ${funcionario.inicioFerias || 'N/A'}</p>
+                <p><strong>Fim das Férias:</strong> ${funcionario.fimFerias || 'N/A'}</p>
             `;
         }
 
@@ -455,21 +461,35 @@
 
         function carregarDashboard() {
             const dbRef = ref(db, 'status');
-            onValue(dbRef, (snapshot) => {
+            onValue(dbRef, async (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
                 tabela.innerHTML = ''; // Limpar a tabela
 
                 if (snapshot.exists()) {
                     const status = snapshot.val();
-                    Object.keys(status).forEach(cpf => {
+                    for (const cpf of Object.keys(status)) {
                         const statusFuncionario = status[cpf];
+                        const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
+                        const funcionario = funcionarioSnapshot.val();
+                        const hoje = new Date().toISOString().split('T')[0];
+
+                        let statusTexto = statusFuncionario.status;
+                        if (funcionario.inicioFerias && funcionario.fimFerias) {
+                            const inicioFerias = new Date(funcionario.inicioFerias);
+                            const fimFerias = new Date(funcionario.fimFerias);
+                            const hojeDate = new Date(hoje);
+                            if (hojeDate >= inicioFerias && hojeDate <= fimFerias) {
+                                statusTexto = 'Férias';
+                            }
+                        }
+
                         const novaLinha = tabela.insertRow();
                         const celulaNome = novaLinha.insertCell(0);
                         const celulaStatus = novaLinha.insertCell(1);
 
-                        celulaNome.textContent = statusFuncionario.nome;
-                        celulaStatus.textContent = statusFuncionario.status;
-                    });
+                        celulaNome.textContent = funcionario.nomeCompleto;
+                        celulaStatus.textContent = statusTexto;
+                    }
                 }
             });
         }
@@ -492,12 +512,14 @@
                 let totalHorasTrabalhadas = 0;
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
+
                 const mesAtual = new Date().getMonth();
+                const anoAtual = new Date().getFullYear();
 
                 Object.keys(registros).forEach(dia => {
                     const registro = registros[dia];
-                    const dataRegistro = new Date(registro.data);
-                    if (dataRegistro.getMonth() === mesAtual) {
+                    const dataRegistro = new Date(dia);
+                    if (dataRegistro.getMonth() === mesAtual && dataRegistro.getFullYear() === anoAtual) {
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
@@ -524,43 +546,6 @@
             }
         }
 
-        async function editarFuncionario(cpf) {
-            const dbRef = ref(db, `funcionarios/${cpf}`);
-            const snapshot = await get(dbRef);
-            if (!snapshot.exists()) {
-                alert('Funcionário não encontrado.');
-                return;
-            }
-
-            const funcionario = snapshot.val();
-            document.getElementById('nomeCompletoCadastro').value = funcionario.nomeCompleto;
-            document.getElementById('cpfCadastro').value = funcionario.cpf;
-            document.getElementById('dataNascimentoCadastro').value = funcionario.dataNascimento;
-            document.getElementById('emailCadastro').value = funcionario.email;
-            document.getElementById('whatsappCadastro').value = funcionario.whatsapp;
-            document.getElementById('dataAdmissaoCadastro').value = funcionario.dataAdmissao;
-            document.getElementById('salarioCadastro').value = funcionario.salario;
-
-            showSection('novoCadastro');
-            document.getElementById('cadastroForm').onsubmit = async function(event) {
-                event.preventDefault();
-                await set(dbRef, {
-                    nomeCompleto: document.getElementById('nomeCompletoCadastro').value.trim(),
-                    cpf: document.getElementById('cpfCadastro').value.trim(),
-                    dataNascimento: document.getElementById('dataNascimentoCadastro').value,
-                    email: document.getElementById('emailCadastro').value.trim(),
-                    whatsapp: document.getElementById('whatsappCadastro').value.trim(),
-                    dataAdmissao: document.getElementById('dataAdmissaoCadastro').value,
-                    salario: document.getElementById('salarioCadastro').value.trim()
-                });
-                alert('Funcionário atualizado com sucesso!');
-                document.getElementById('cadastroForm').reset();
-                carregarFuncionarios();
-                carregarFiltroFuncionarios();
-                showSection('consultarCadastro');
-            };
-        }
-
         window.toggleSubmenu = toggleSubmenu;
         window.showSection = showSection;
         window.cadastrarFuncionario = cadastrarFuncionario;
@@ -572,7 +557,6 @@
         window.limparDados = limparDados;
         window.mostrarResumo = mostrarResumo;
         window.carregarDashboard = carregarDashboard;
-        window.editarFuncionario = editarFuncionario;
     </script>
 </body>
 </html>
