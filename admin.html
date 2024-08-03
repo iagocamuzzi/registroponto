@@ -131,6 +131,7 @@
                         <th>Nome Completo</th>
                         <th>CPF</th>
                         <th>Detalhes</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -275,10 +276,12 @@
                     const celulaNomeCompleto = novaLinha.insertCell(0);
                     const celulaCpf = novaLinha.insertCell(1);
                     const celulaDetalhes = novaLinha.insertCell(2);
+                    const celulaAcoes = novaLinha.insertCell(3);
 
                     celulaNomeCompleto.textContent = funcionario.nomeCompleto;
                     celulaCpf.textContent = funcionario.cpf;
                     celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
+                    celulaAcoes.innerHTML = `<button onclick="editarFuncionario('${funcionario.cpf}')">Editar</button>`;
                 });
             }
         }
@@ -489,14 +492,12 @@
                 let totalHorasTrabalhadas = 0;
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
-
                 const mesAtual = new Date().getMonth();
-                const anoAtual = new Date().getFullYear();
 
                 Object.keys(registros).forEach(dia => {
-                    const [ano, mes] = dia.split('-');
-                    if (parseInt(mes) - 1 === mesAtual && parseInt(ano) === anoAtual) {
-                        const registro = registros[dia];
+                    const registro = registros[dia];
+                    const dataRegistro = new Date(registro.data);
+                    if (dataRegistro.getMonth() === mesAtual) {
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
@@ -523,6 +524,43 @@
             }
         }
 
+        async function editarFuncionario(cpf) {
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
+            if (!snapshot.exists()) {
+                alert('Funcionário não encontrado.');
+                return;
+            }
+
+            const funcionario = snapshot.val();
+            document.getElementById('nomeCompletoCadastro').value = funcionario.nomeCompleto;
+            document.getElementById('cpfCadastro').value = funcionario.cpf;
+            document.getElementById('dataNascimentoCadastro').value = funcionario.dataNascimento;
+            document.getElementById('emailCadastro').value = funcionario.email;
+            document.getElementById('whatsappCadastro').value = funcionario.whatsapp;
+            document.getElementById('dataAdmissaoCadastro').value = funcionario.dataAdmissao;
+            document.getElementById('salarioCadastro').value = funcionario.salario;
+
+            showSection('novoCadastro');
+            document.getElementById('cadastroForm').onsubmit = async function(event) {
+                event.preventDefault();
+                await set(dbRef, {
+                    nomeCompleto: document.getElementById('nomeCompletoCadastro').value.trim(),
+                    cpf: document.getElementById('cpfCadastro').value.trim(),
+                    dataNascimento: document.getElementById('dataNascimentoCadastro').value,
+                    email: document.getElementById('emailCadastro').value.trim(),
+                    whatsapp: document.getElementById('whatsappCadastro').value.trim(),
+                    dataAdmissao: document.getElementById('dataAdmissaoCadastro').value,
+                    salario: document.getElementById('salarioCadastro').value.trim()
+                });
+                alert('Funcionário atualizado com sucesso!');
+                document.getElementById('cadastroForm').reset();
+                carregarFuncionarios();
+                carregarFiltroFuncionarios();
+                showSection('consultarCadastro');
+            };
+        }
+
         window.toggleSubmenu = toggleSubmenu;
         window.showSection = showSection;
         window.cadastrarFuncionario = cadastrarFuncionario;
@@ -534,6 +572,7 @@
         window.limparDados = limparDados;
         window.mostrarResumo = mostrarResumo;
         window.carregarDashboard = carregarDashboard;
+        window.editarFuncionario = editarFuncionario;
     </script>
 </body>
 </html>
