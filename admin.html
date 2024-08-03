@@ -486,17 +486,16 @@
 
             if (snapshot.exists()) {
                 const registros = snapshot.val();
-                const dataAtual = new Date();
-                const mesAtual = dataAtual.getMonth();
-                const anoAtual = dataAtual.getFullYear();
-
                 let totalHorasTrabalhadas = 0;
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
+                const mesAtual = new Date().getMonth();
+                const anoAtual = new Date().getFullYear();
+
                 Object.keys(registros).forEach(dia => {
-                    const dataRegistro = new Date(dia);
-                    if (dataRegistro.getMonth() === mesAtual && dataRegistro.getFullYear() === anoAtual) {
+                    const [ano, mes] = dia.split('-');
+                    if (parseInt(mes) - 1 === mesAtual && parseInt(ano) === anoAtual) {
                         const registro = registros[dia];
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
