@@ -110,116 +110,123 @@
     </div>
     <div class="container">
         <h1>Administração de Pontos</h1>
-        <div id="novoCadastro" class="section">
-            <form id="cadastroForm">
-                <h2>Cadastro de Funcionário</h2>
-                <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
-                <input type="text" id="cpfCadastro" placeholder="CPF" required>
-                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
-                <input type="email" id="emailCadastro" placeholder="Email" required>
-                <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
-                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
-                <input type="number" id="salarioCadastro" placeholder="Salário" required>
-                <input type="date" id="inicioFeriasCadastro" placeholder="Início das Férias">
-                <input type="date" id="fimFeriasCadastro" placeholder="Fim das Férias">
-                <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
-            </form>
-        </div>
-        <div id="consultarCadastro" class="section">
-            <h2>Consultar Funcionário</h2>
-            <table id="tabelaFuncionarios">
-                <thead>
-                    <tr>
-                        <th>Nome Completo</th>
-                        <th>CPF</th>
-                        <th>Detalhes</th>
-                        <th>Editar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Lista de funcionários será inserida aqui -->
-                </tbody>
-            </table>
-            <div id="detalhesFuncionario"></div>
-        </div>
-        <div id="relatorios" class="section">
-            <div class="filter">
-                <label for="filterFuncionario">Selecionar Funcionário:</label>
-                <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
-                    <option value="">Selecione um funcionário</option>
-                </select>
+        <form id="adminAccessForm">
+            <h2>Acesso ao Painel Admin</h2>
+            <input type="password" id="adminSenha" placeholder="Senha" required>
+            <button type="button" onclick="acessarAdmin()">Acessar</button>
+        </form>
+        <div id="adminPanel" style="display: none;">
+            <div id="novoCadastro" class="section">
+                <form id="cadastroForm">
+                    <h2>Cadastro de Funcionário</h2>
+                    <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
+                    <input type="text" id="cpfCadastro" placeholder="CPF" required>
+                    <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
+                    <input type="email" id="emailCadastro" placeholder="Email" required>
+                    <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
+                    <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
+                    <input type="number" id="salarioCadastro" placeholder="Salário" required>
+                    <input type="date" id="inicioFeriasCadastro" placeholder="Início das Férias">
+                    <input type="date" id="fimFeriasCadastro" placeholder="Fim das Férias">
+                    <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
+                </form>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Entrada</th>
-                        <th>Pausa</th>
-                        <th>Retorno</th>
-                        <th>Saída</th>
-                        <th>Horas Trabalhadas</th>
-                        <th>Horas Extras</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="registrosTabelaAdmin">
-                    <!-- Registros serão inseridos aqui -->
-                </tbody>
-            </table>
-            <div class="admin-buttons">
-                <button onclick="limparDados()">Limpar Todos os Dados</button>
+            <div id="consultarCadastro" class="section">
+                <h2>Consultar Funcionário</h2>
+                <table id="tabelaFuncionarios">
+                    <thead>
+                        <tr>
+                            <th>Nome Completo</th>
+                            <th>CPF</th>
+                            <th>Detalhes</th>
+                            <th>Editar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Lista de funcionários será inserida aqui -->
+                    </tbody>
+                </table>
+                <div id="detalhesFuncionario"></div>
             </div>
-        </div>
-        <div id="dashboard" class="section">
-            <h2>Dashboard</h2>
-            <table id="dashboardTabela">
-                <thead>
-                    <tr>
-                        <th>Funcionário</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Status dos funcionários serão inseridos aqui -->
-                </tbody>
-            </table>
-        </div>
-        <div id="resumoMes" class="section">
-            <h2>Resumo do Mês</h2>
-            <div class="filter">
-                <label for="filterResumoFuncionario">Selecionar Funcionário:</label>
-                <select id="filterResumoFuncionario" onchange="mostrarResumo()">
-                    <option value="">Selecione um funcionário</option>
-                </select>
+            <div id="relatorios" class="section">
+                <div class="filter">
+                    <label for="filterFuncionario">Selecionar Funcionário:</label>
+                    <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
+                        <option value="">Selecione um funcionário</option>
+                    </select>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Entrada</th>
+                            <th>Pausa</th>
+                            <th>Retorno</th>
+                            <th>Saída</th>
+                            <th>Horas Trabalhadas</th>
+                            <th>Horas Extras</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registrosTabelaAdmin">
+                        <!-- Registros serão inseridos aqui -->
+                    </tbody>
+                </table>
+                <div class="admin-buttons">
+                    <button onclick="limparDados()">Limpar Todos os Dados</button>
+                </div>
             </div>
-            <table id="resumoTabela">
-                <thead>
-                    <tr>
-                        <th>Nome Completo</th>
-                        <th>Horas Trabalhadas</th>
-                        <th>Horas Extras</th>
-                        <th>Dias Trabalhados</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Resumo do mês será inserido aqui -->
-                </tbody>
-            </table>
-        </div>
-        <div id="editarFuncionario" class="section">
-            <h2>Editar Funcionário</h2>
-            <form id="editarForm">
-                <input type="text" id="editarNomeCompleto" placeholder="Nome Completo" required>
-                <input type="text" id="editarCpf" placeholder="CPF" required readonly>
-                <input type="date" id="editarDataNascimento" placeholder="Data de Nascimento" required>
-                <input type="email" id="editarEmail" placeholder="Email" required>
-                <input type="text" id="editarWhatsapp" placeholder="WhatsApp" required>
-                <input type="date" id="editarDataAdmissao" placeholder="Data de Admissão" required>
-                <input type="number" id="editarSalario" placeholder="Salário" required>
-                <input type="date" id="editarInicioFerias" placeholder="Início das Férias">
-                <input type="date" id="editarFimFerias" placeholder="Fim das Férias">
-                <button type="button" onclick="salvarEdicao()">Salvar</button>
-            </form>
+            <div id="dashboard" class="section">
+                <h2>Dashboard</h2>
+                <table id="dashboardTabela">
+                    <thead>
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Status dos funcionários serão inseridos aqui -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="resumoMes" class="section">
+                <h2>Resumo do Mês</h2>
+                <div class="filter">
+                    <label for="filterResumoFuncionario">Selecionar Funcionário:</label>
+                    <select id="filterResumoFuncionario" onchange="mostrarResumo()">
+                        <option value="">Selecione um funcionário</option>
+                    </select>
+                </div>
+                <table id="resumoTabela">
+                    <thead>
+                        <tr>
+                            <th>Nome Completo</th>
+                            <th>Horas Trabalhadas</th>
+                            <th>Horas Extras</th>
+                            <th>Dias Trabalhados</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Resumo do mês será inserido aqui -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="editarFuncionario" class="section">
+                <h2>Editar Funcionário</h2>
+                <form id="editarForm">
+                    <input type="text" id="editarNomeCompleto" placeholder="Nome Completo" required>
+                    <input type="text" id="editarCpf" placeholder="CPF" required readonly>
+                    <input type="date" id="editarDataNascimento" placeholder="Data de Nascimento" required>
+                    <input type="email" id="editarEmail" placeholder="Email" required>
+                    <input type="text" id="editarWhatsapp" placeholder="WhatsApp" required>
+                    <input type="date" id="editarDataAdmissao" placeholder="Data de Admissão" required>
+                    <input type="number" id="editarSalario" placeholder="Salário" required>
+                    <input type="date" id="editarInicioFerias" placeholder="Início das Férias">
+                    <input type="date" id="editarFimFerias" placeholder="Fim das Férias">
+                    <button type="button" onclick="salvarEdicao()">Salvar</button>
+                </form>
+            </div>
         </div>
     </div>
     <script type="module">
@@ -240,12 +247,6 @@
         const db = getDatabase(app);
 
         document.addEventListener('DOMContentLoaded', () => {
-            const senha = prompt("Digite a senha de acesso:");
-            if (senha !== "021092") {
-                alert("Senha incorreta. Acesso negado.");
-                window.location.href = "index.html";
-                return;
-            }
             carregarFuncionarios();
             carregarFiltroFuncionarios();
             carregarDashboard();
@@ -259,6 +260,16 @@
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
             document.getElementById(sectionId).classList.add('active');
+        }
+
+        function acessarAdmin() {
+            const senha = document.getElementById('adminSenha').value;
+            if (senha === '021092') {
+                document.getElementById('adminAccessForm').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+            } else {
+                alert('Senha incorreta.');
+            }
         }
 
         async function cadastrarFuncionario() {
@@ -528,19 +539,19 @@
 
         function carregarDashboard() {
             const dbRef = ref(db, 'funcionarios');
-            onValue(dbRef, (snapshot) => {
+            onValue(dbRef, async (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
                 tabela.innerHTML = ''; // Limpar a tabela
 
                 if (snapshot.exists()) {
                     const funcionarios = snapshot.val();
                     const hoje = new Date();
+
                     Object.keys(funcionarios).forEach(cpf => {
                         const funcionario = funcionarios[cpf];
                         const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
                         const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
-
-                        let statusAtual = "Ativo";
+                        let statusAtual = 'Ativo';
 
                         if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
                             statusAtual = 'Férias';
@@ -623,6 +634,7 @@
         window.carregarDashboard = carregarDashboard;
         window.editarFuncionario = editarFuncionario;
         window.salvarEdicao = salvarEdicao;
+        window.acessarAdmin = acessarAdmin;
     </script>
 </body>
 </html>
