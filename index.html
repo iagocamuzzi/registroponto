@@ -105,6 +105,12 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        .ferias-mensagem {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #FF5722;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -136,6 +142,7 @@
                     Saída
                 </div>
             </div>
+            <div id="feriasMensagem" class="ferias-mensagem" style="display: none;"></div>
             <table id="tabelaRegistros" class="registro-dia" style="display: none;">
                 <thead>
                     <tr>
@@ -155,12 +162,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            apiKey: "API_KEY",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
             projectId: "pontoeletronico-f3f30",
             storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID",
             databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
         };
 
@@ -186,9 +193,20 @@
                 localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
                 document.getElementById('acessoForm').style.display = 'none';
                 document.getElementById('registroPonto').style.display = 'block';
-                document.getElementById('nomeFuncionario').innerText = `Bem-vinda, ${funcionario.nomeCompleto}`;
+                document.getElementById('nomeFuncionario').innerText = `Bem-vindo(a), ${funcionario.nomeCompleto}`;
                 carregarRegistrosDoDia();
                 desativarBotoes();
+
+                // Verificar se o funcionário está de férias
+                const hoje = new Date();
+                const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+                const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+
+                if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                    document.querySelectorAll('.button').forEach(button => button.classList.add('disabled'));
+                    document.getElementById('feriasMensagem').innerText = `Boas Férias! \nPeríodo: ${inicioFerias.toLocaleDateString()} a ${fimFerias.toLocaleDateString()}`;
+                    document.getElementById('feriasMensagem').style.display = 'block';
+                }
             });
         }
 
@@ -202,24 +220,9 @@
             adicionarRegistroNaTabela(registro);
             document.getElementById(tipo).classList.add('disabled');
 
-            const statusRef = db.ref(`status/${funcionario.cpf}`);
-            let statusText = '';
-            switch (tipo) {
-                case 'entrada':
-                    statusText = 'Trabalhando (Turno 1)';
-                    break;
-                case 'pausa':
-                    statusText = 'Intervalo';
-                    break;
-                case 'retorno':
-                    statusText = 'Trabalhando (Turno 2)';
-                    break;
-                case 'saida':
-                    statusText = 'Fim de Expediente';
-                    document.getElementById('gerarPDF').style.display = 'block';
-                    break;
+            if (tipo === 'saida') {
+                document.getElementById('gerarPDF').style.display = 'block';
             }
-            statusRef.set({ nome: funcionario.nomeCompleto, status: statusText });
         }
 
         function salvarRegistroLocalmente(registro) {
@@ -304,12 +307,7 @@
         }
 
         function irParaAdmin() {
-            const senha = prompt("Digite a senha para acessar o painel de administração:");
-            if (senha === "021092") {
-                window.location.href = 'admin.html';
-            } else {
-                alert("Senha incorreta!");
-            }
+            window.location.href = 'admin.html';
         }
 
         window.acessarRegistro = acessarRegistro;
