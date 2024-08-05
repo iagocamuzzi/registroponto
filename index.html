@@ -111,6 +111,10 @@
             color: #FF5722;
             text-align: center;
         }
+        .admin-password {
+            display: none;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -120,8 +124,12 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
+            <div class="admin-button" onclick="mostrarCampoSenha()">Painel</div>
         </form>
+        <div id="adminPasswordField" class="admin-password">
+            <input type="password" id="adminPassword" placeholder="Senha do Admin">
+            <button type="button" onclick="acessarPainel()">Entrar</button>
+        </div>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
             <div class="buttons">
@@ -335,14 +343,24 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        function irParaAdmin() {
-            window.location.href = 'admin.html';
+        function mostrarCampoSenha() {
+            document.getElementById('adminPasswordField').style.display = 'block';
+        }
+
+        function acessarPainel() {
+            const senha = document.getElementById('adminPassword').value.trim();
+            if (senha === '021092') {
+                window.location.href = 'admin.html';
+            } else {
+                alert('Senha incorreta.');
+            }
         }
 
         window.acessarRegistro = acessarRegistro;
         window.registrarPonto = registrarPonto;
         window.gerarPDF = gerarPDF;
-        window.irParaAdmin = irParaAdmin;
+        window.irParaAdmin = mostrarCampoSenha;
+        window.acessarPainel = acessarPainel;
     </script>
 </body>
 </html>
