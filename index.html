@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Ponto</title>
+    <title>Sistema de Ponto Eletrônico</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,89 +15,314 @@
             margin: 0;
         }
         .container {
-            text-align: center;
-            padding: 20px;
             background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 500px;
         }
-        button {
-            padding: 10px 20px;
+        h1 {
+            text-align: center;
+        }
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        .button {
+            width: 100px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: white;
             font-size: 16px;
-            margin: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 1;
+            transition: opacity 0.3s;
         }
-        .message {
+        .entrada { background-color: #4CAF50; }
+        .pausa { background-color: #FFC107; }
+        .retorno { background-color: #FF9800; }
+        .saida { background-color: #F44336; }
+        .button img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+        }
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #nomeFuncionario {
+            margin-bottom: 20px;
             font-size: 18px;
-            color: green;
+            text-align: center;
+        }
+        .admin-button {
+            margin-top: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .registro-dia {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .registro-dia th, .registro-dia td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .registro-dia th {
+            background-color: #f2f2f2;
+        }
+        .pdf-button {
+            display: none;
+            margin-top: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .ferias-mensagem {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #FF5722;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Registro de Ponto</h1>
-        <div id="feriasMessage" class="message"></div>
-        <button id="entradaBtn" onclick="registrarPonto('entrada')">Entrada</button>
-        <button id="pausaBtn" onclick="registrarPonto('pausa')">Pausa</button>
-        <button id="retornoBtn" onclick="registrarPonto('retorno')">Retorno</button>
-        <button id="saidaBtn" onclick="registrarPonto('saida')">Saída</button>
+        <h1>Sistema de Ponto Eletrônico</h1>
+        <form id="acessoForm">
+            <h2>Acesso ao Registro de Ponto</h2>
+            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
+            <button type="button" onclick="acessarRegistro()">Acessar</button>
+            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
+        </form>
+        <div id="registroPonto" style="display: none;">
+            <div id="nomeFuncionario"></div>
+            <div class="buttons">
+                <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
+                    Entrada
+                </div>
+                <div class="button pausa" id="pausa" onclick="registrarPonto('pausa')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Pausa">
+                    Pausa
+                </div>
+                <div class="button retorno" id="retorno" onclick="registrarPonto('retorno')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Retorno">
+                    Retorno
+                </div>
+                <div class="button saida" id="saida" onclick="registrarPonto('saida')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/exit.png" alt="Saída">
+                    Saída
+                </div>
+            </div>
+            <div id="feriasMensagem" class="ferias-mensagem" style="display: none;"></div>
+            <table id="tabelaRegistros" class="registro-dia" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Horário</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Registros do dia serão inseridos aqui -->
+                </tbody>
+            </table>
+            <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
+        </div>
     </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            apiKey: "API_KEY",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
             projectId: "pontoeletronico-f3f30",
             storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID",
             databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            verificarFerias();
-        });
+        function acessarRegistro() {
+            const cpf = document.getElementById('cpfAcesso').value.trim();
 
-        async function verificarFerias() {
-            const cpf = '12345678900'; // Substitua pelo CPF do funcionário logado
-            const dbRef = ref(db, `funcionarios/${cpf}`);
-            const snapshot = await get(dbRef);
+            if (cpf === '') {
+                alert('Por favor, insira o CPF.');
+                return;
+            }
 
-            if (snapshot.exists()) {
-                const funcionario = snapshot.val();
-                const dataInicioFerias = new Date(funcionario.dataInicioFerias);
-                const dataFimFerias = new Date(funcionario.dataFimFerias);
-                const hoje = new Date();
-
-                if (hoje >= dataInicioFerias && hoje <= dataFimFerias) {
-                    document.getElementById('feriasMessage').textContent = `Boas Férias! De ${dataInicioFerias.toLocaleDateString()} até ${dataFimFerias.toLocaleDateString()}`;
-                    document.getElementById('entradaBtn').disabled = true;
-                    document.getElementById('pausaBtn').disabled = true;
-                    document.getElementById('retornoBtn').disabled = true;
-                    document.getElementById('saidaBtn').disabled = true;
+            const dbRef = db.ref(`funcionarios/${cpf}`);
+            dbRef.get().then(snapshot => {
+                if (!snapshot.exists()) {
+                    alert('Funcionário não encontrado.');
+                    return;
                 }
+
+                const funcionario = snapshot.val();
+                localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
+                document.getElementById('acessoForm').style.display = 'none';
+                document.getElementById('registroPonto').style.display = 'block';
+                document.getElementById('nomeFuncionario').innerText = `Bem-vindo(a), ${funcionario.nomeCompleto}`;
+                carregarRegistrosDoDia();
+                desativarBotoes();
+
+                // Verificar se o funcionário está de férias
+                const hoje = new Date();
+                const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+                const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+
+                if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                    document.querySelectorAll('.button').forEach(button => button.classList.add('disabled'));
+                    document.getElementById('feriasMensagem').innerText = `Boas Férias! \nPeríodo: ${inicioFerias.toLocaleDateString()} a ${fimFerias.toLocaleDateString()}`;
+                    document.getElementById('feriasMensagem').style.display = 'block';
+                }
+            });
+        }
+
+        function registrarPonto(tipo) {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const hoje = new Date();
+            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+
+            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                alert('Você está de férias. Não é possível registrar o ponto.');
+                return;
+            }
+
+            const dataHora = new Date().toLocaleString();
+            const data = new Date().toISOString().split('T')[0];
+            const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
+
+            salvarRegistroLocalmente(registro);
+            adicionarRegistroNaTabela(registro);
+            document.getElementById(tipo).classList.add('disabled');
+
+            if (tipo === 'saida') {
+                document.getElementById('gerarPDF').style.display = 'block';
             }
         }
 
-        async function registrarPonto(tipo) {
-            const cpf = '12345678900'; // Substitua pelo CPF do funcionário logado
-            const dataAtual = new Date().toISOString().split('T')[0];
-            const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            const dbRef = ref(db, `registros/${cpf}/${dataAtual}`);
-            const snapshot = await get(dbRef);
-
-            const registro = snapshot.exists() ? snapshot.val() : {};
-            registro[tipo] = `${dataAtual} ${horaAtual}`;
-
-            await set(dbRef, registro);
-
-            alert('Ponto registrado com sucesso!');
+        function salvarRegistroLocalmente(registro) {
+            const dbRef = db.ref(`registros/${registro.cpf}/${registro.data}`);
+            dbRef.get().then(snapshot => {
+                const registros = snapshot.exists() ? snapshot.val() : {};
+                registros[registro.tipo] = registro.dataHora;
+                dbRef.set(registros);
+            });
         }
+
+        function desativarBotoes() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${new Date().toISOString().split('T')[0]}`);
+            dbRef.get().then(snapshot => {
+                const registros = snapshot.exists() ? snapshot.val() : {};
+                const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+                botoes.forEach(botao => {
+                    const btnElement = document.getElementById(botao);
+                    if (registros[botao]) {
+                        btnElement.classList.add('disabled');
+                    } else {
+                        btnElement.classList.remove('disabled');
+                    }
+                });
+            });
+        }
+
+        function carregarRegistrosDoDia() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
+            dbRef.get().then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+                    tabela.innerHTML = ''; // Limpar a tabela
+                    Object.keys(registros).forEach(tipo => {
+                        const novaLinha = tabela.insertRow();
+                        const celulaTipo = novaLinha.insertCell(0);
+                        const celulaHorario = novaLinha.insertCell(1);
+                        celulaTipo.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1);
+                        celulaHorario.textContent = registros[tipo].split(' ')[1];
+                    });
+                    document.getElementById('tabelaRegistros').style.display = 'table';
+                }
+            });
+        }
+
+        function adicionarRegistroNaTabela(registro) {
+            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+            const novaLinha = tabela.insertRow();
+            const celulaTipo = novaLinha.insertCell(0);
+            const celulaHorario = novaLinha.insertCell(1);
+            celulaTipo.textContent = registro.tipo.charAt(0).toUpperCase() + registro.tipo.slice(1);
+            celulaHorario.textContent = registro.dataHora.split(' ')[1];
+            document.getElementById('tabelaRegistros').style.display = 'table';
+        }
+
+        function gerarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const dataAtual = new Date().toLocaleDateString();
+            doc.text(`Comprovante de Registro de Ponto`, 20, 20);
+            doc.text(`Funcionário: ${funcionario.nomeCompleto}`, 20, 30);
+            doc.text(`Data: ${dataAtual}`, 20, 40);
+
+            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+            const linhas = tabela.getElementsByTagName('tr');
+
+            let y = 50;
+            for (let i = 0; i < linhas.length; i++) {
+                const tipo = linhas[i].getElementsByTagName('td')[0].textContent;
+                const horario = linhas[i].getElementsByTagName('td')[1].textContent;
+                doc.text(`${tipo}: ${horario}`, 20, y);
+                y += 10;
+            }
+
+            doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
+        }
+
+        function irParaAdmin() {
+            window.location.href = 'admin.html';
+        }
+
+        window.acessarRegistro = acessarRegistro;
+        window.registrarPonto = registrarPonto;
+        window.gerarPDF = gerarPDF;
+        window.irParaAdmin = irParaAdmin;
     </script>
 </body>
 </html>
