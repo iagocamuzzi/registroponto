@@ -120,8 +120,8 @@
                 <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
                 <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
                 <input type="number" id="salarioCadastro" placeholder="Salário" required>
-                <input type="date" id="inicioFeriasCadastro" placeholder="Início das Férias">
-                <input type="date" id="fimFeriasCadastro" placeholder="Fim das Férias">
+                <input type="date" id="dataInicioFerias" placeholder="Data Início Férias">
+                <input type="date" id="dataFimFerias" placeholder="Data Fim Férias">
                 <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
             </form>
         </div>
@@ -133,7 +133,6 @@
                         <th>Nome Completo</th>
                         <th>CPF</th>
                         <th>Detalhes</th>
-                        <th>Editar</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -206,21 +205,6 @@
                 </tbody>
             </table>
         </div>
-        <div id="editarFuncionario" class="section">
-            <h2>Editar Funcionário</h2>
-            <form id="editarForm">
-                <input type="text" id="editarNomeCompleto" placeholder="Nome Completo" required>
-                <input type="text" id="editarCpf" placeholder="CPF" required readonly>
-                <input type="date" id="editarDataNascimento" placeholder="Data de Nascimento" required>
-                <input type="email" id="editarEmail" placeholder="Email" required>
-                <input type="text" id="editarWhatsapp" placeholder="WhatsApp" required>
-                <input type="date" id="editarDataAdmissao" placeholder="Data de Admissão" required>
-                <input type="number" id="editarSalario" placeholder="Salário" required>
-                <input type="date" id="editarInicioFerias" placeholder="Início das Férias">
-                <input type="date" id="editarFimFerias" placeholder="Fim das Férias">
-                <button type="button" onclick="salvarEdicao()">Salvar</button>
-            </form>
-        </div>
     </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -263,8 +247,8 @@
             const whatsapp = document.getElementById('whatsappCadastro').value.trim();
             const dataAdmissao = document.getElementById('dataAdmissaoCadastro').value;
             const salario = document.getElementById('salarioCadastro').value.trim();
-            const inicioFerias = document.getElementById('inicioFeriasCadastro').value;
-            const fimFerias = document.getElementById('fimFeriasCadastro').value;
+            const dataInicioFerias = document.getElementById('dataInicioFerias').value;
+            const dataFimFerias = document.getElementById('dataFimFerias').value;
 
             if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
                 alert('Por favor, preencha todos os campos.');
@@ -272,7 +256,7 @@
             }
 
             const dbRef = ref(db, `funcionarios/${cpf}`);
-            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, dataInicioFerias, dataFimFerias });
 
             alert('Funcionário cadastrado com sucesso!');
             document.getElementById('cadastroForm').reset();
@@ -295,12 +279,10 @@
                     const celulaNomeCompleto = novaLinha.insertCell(0);
                     const celulaCpf = novaLinha.insertCell(1);
                     const celulaDetalhes = novaLinha.insertCell(2);
-                    const celulaEditar = novaLinha.insertCell(3);
 
                     celulaNomeCompleto.textContent = funcionario.nomeCompleto;
                     celulaCpf.textContent = funcionario.cpf;
                     celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
-                    celulaEditar.innerHTML = `<button onclick="editarFuncionario('${funcionario.cpf}')">Editar</button>`;
                 });
             }
         }
@@ -351,55 +333,9 @@
                 <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
                 <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
                 <p><strong>Salário:</strong> ${funcionario.salario}</p>
-                <p><strong>Início das Férias:</strong> ${funcionario.inicioFerias || 'N/A'}</p>
-                <p><strong>Fim das Férias:</strong> ${funcionario.fimFerias || 'N/A'}</p>
+                <p><strong>Início das Férias:</strong> ${funcionario.dataInicioFerias}</p>
+                <p><strong>Fim das Férias:</strong> ${funcionario.dataFimFerias}</p>
             `;
-        }
-
-        async function editarFuncionario(cpf) {
-            const dbRef = ref(db, `funcionarios/${cpf}`);
-            const snapshot = await get(dbRef);
-
-            if (snapshot.exists()) {
-                const funcionario = snapshot.val();
-                document.getElementById('editarNomeCompleto').value = funcionario.nomeCompleto;
-                document.getElementById('editarCpf').value = funcionario.cpf;
-                document.getElementById('editarDataNascimento').value = funcionario.dataNascimento;
-                document.getElementById('editarEmail').value = funcionario.email;
-                document.getElementById('editarWhatsapp').value = funcionario.whatsapp;
-                document.getElementById('editarDataAdmissao').value = funcionario.dataAdmissao;
-                document.getElementById('editarSalario').value = funcionario.salario;
-                document.getElementById('editarInicioFerias').value = funcionario.inicioFerias;
-                document.getElementById('editarFimFerias').value = funcionario.fimFerias;
-
-                showSection('editarFuncionario');
-            } else {
-                alert('Funcionário não encontrado.');
-            }
-        }
-
-        async function salvarEdicao() {
-            const nomeCompleto = document.getElementById('editarNomeCompleto').value.trim();
-            const cpf = document.getElementById('editarCpf').value.trim();
-            const dataNascimento = document.getElementById('editarDataNascimento').value;
-            const email = document.getElementById('editarEmail').value.trim();
-            const whatsapp = document.getElementById('editarWhatsapp').value.trim();
-            const dataAdmissao = document.getElementById('editarDataAdmissao').value;
-            const salario = document.getElementById('editarSalario').value.trim();
-            const inicioFerias = document.getElementById('editarInicioFerias').value;
-            const fimFerias = document.getElementById('editarFimFerias').value;
-
-            if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
-                alert('Por favor, preencha todos os campos.');
-                return;
-            }
-
-            const dbRef = ref(db, `funcionarios/${cpf}`);
-            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
-
-            alert('Dados do funcionário atualizados com sucesso!');
-            showSection('consultarCadastro');
-            carregarFuncionarios();
         }
 
         async function carregarRegistrosFuncionario() {
@@ -528,30 +464,14 @@
 
                 if (snapshot.exists()) {
                     const status = snapshot.val();
-                    Object.keys(status).forEach(async cpf => {
+                    Object.keys(status).forEach(cpf => {
                         const statusFuncionario = status[cpf];
-                        const funcionarioRef = ref(db, `funcionarios/${cpf}`);
-                        const funcionarioSnapshot = await get(funcionarioRef);
+                        const novaLinha = tabela.insertRow();
+                        const celulaNome = novaLinha.insertCell(0);
+                        const celulaStatus = novaLinha.insertCell(1);
 
-                        if (funcionarioSnapshot.exists()) {
-                            const funcionario = funcionarioSnapshot.val();
-                            const hoje = new Date();
-                            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
-                            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
-
-                            let statusAtual = statusFuncionario.status;
-
-                            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
-                                statusAtual = 'Férias';
-                            }
-
-                            const novaLinha = tabela.insertRow();
-                            const celulaNome = novaLinha.insertCell(0);
-                            const celulaStatus = novaLinha.insertCell(1);
-
-                            celulaNome.textContent = statusFuncionario.nome;
-                            celulaStatus.textContent = statusAtual;
-                        }
+                        celulaNome.textContent = statusFuncionario.nome;
+                        celulaStatus.textContent = statusFuncionario.status;
                     });
                 }
             });
@@ -576,14 +496,13 @@
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
-                const hoje = new Date();
-                const mesAtual = hoje.getMonth();
-                const anoAtual = hoje.getFullYear();
-
                 Object.keys(registros).forEach(dia => {
+                    const registro = registros[dia];
                     const dataRegistro = new Date(dia);
+                    const mesAtual = new Date().getMonth();
+                    const anoAtual = new Date().getFullYear();
+
                     if (dataRegistro.getMonth() === mesAtual && dataRegistro.getFullYear() === anoAtual) {
-                        const registro = registros[dia];
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
@@ -621,8 +540,6 @@
         window.limparDados = limparDados;
         window.mostrarResumo = mostrarResumo;
         window.carregarDashboard = carregarDashboard;
-        window.editarFuncionario = editarFuncionario;
-        window.salvarEdicao = salvarEdicao;
     </script>
 </body>
 </html>
