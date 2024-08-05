@@ -240,6 +240,12 @@
         const db = getDatabase(app);
 
         document.addEventListener('DOMContentLoaded', () => {
+            const senha = prompt("Digite a senha de acesso:");
+            if (senha !== "021092") {
+                alert("Senha incorreta. Acesso negado.");
+                window.location.href = "index.html";
+                return;
+            }
             carregarFuncionarios();
             carregarFiltroFuncionarios();
             carregarDashboard();
@@ -521,37 +527,31 @@
         }
 
         function carregarDashboard() {
-            const dbRef = ref(db, 'status');
+            const dbRef = ref(db, 'funcionarios');
             onValue(dbRef, (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
                 tabela.innerHTML = ''; // Limpar a tabela
 
                 if (snapshot.exists()) {
-                    const status = snapshot.val();
-                    Object.keys(status).forEach(async cpf => {
-                        const statusFuncionario = status[cpf];
-                        const funcionarioRef = ref(db, `funcionarios/${cpf}`);
-                        const funcionarioSnapshot = await get(funcionarioRef);
+                    const funcionarios = snapshot.val();
+                    const hoje = new Date();
+                    Object.keys(funcionarios).forEach(cpf => {
+                        const funcionario = funcionarios[cpf];
+                        const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+                        const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
 
-                        if (funcionarioSnapshot.exists()) {
-                            const funcionario = funcionarioSnapshot.val();
-                            const hoje = new Date();
-                            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
-                            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+                        let statusAtual = "Ativo";
 
-                            let statusAtual = statusFuncionario.status;
-
-                            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
-                                statusAtual = 'Férias';
-                            }
-
-                            const novaLinha = tabela.insertRow();
-                            const celulaNome = novaLinha.insertCell(0);
-                            const celulaStatus = novaLinha.insertCell(1);
-
-                            celulaNome.textContent = statusFuncionario.nome;
-                            celulaStatus.textContent = statusAtual;
+                        if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                            statusAtual = 'Férias';
                         }
+
+                        const novaLinha = tabela.insertRow();
+                        const celulaNome = novaLinha.insertCell(0);
+                        const celulaStatus = novaLinha.insertCell(1);
+
+                        celulaNome.textContent = funcionario.nomeCompleto;
+                        celulaStatus.textContent = statusAtual;
                     });
                 }
             });
