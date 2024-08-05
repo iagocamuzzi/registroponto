@@ -162,12 +162,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            apiKey: "API_KEY",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
             projectId: "pontoeletronico-f3f30",
             storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID",
             databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
         };
 
@@ -212,15 +212,6 @@
 
         function registrarPonto(tipo) {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const hoje = new Date();
-            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
-            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
-
-            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
-                alert('Você está de férias. Não é possível registrar o ponto.');
-                return;
-            }
-
             const dataHora = new Date().toLocaleString();
             const data = new Date().toISOString().split('T')[0];
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
