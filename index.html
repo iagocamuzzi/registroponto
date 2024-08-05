@@ -240,7 +240,27 @@
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 registros[registro.tipo] = registro.dataHora;
                 dbRef.set(registros);
+
+                // Atualizar status do funcionário
+                const status = determinarStatus(registro.tipo);
+                const statusRef = db.ref(`status/${registro.cpf}`);
+                statusRef.set({ nome: registro.nome, status });
             });
+        }
+
+        function determinarStatus(tipo) {
+            switch (tipo) {
+                case 'entrada':
+                    return 'Trabalhando (Turno 1)';
+                case 'pausa':
+                    return 'Intervalo';
+                case 'retorno':
+                    return 'Trabalhando (Turno 2)';
+                case 'saida':
+                    return 'Fim de Expediente';
+                default:
+                    return 'Desconhecido';
+            }
         }
 
         function desativarBotoes() {
