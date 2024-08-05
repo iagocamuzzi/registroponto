@@ -120,7 +120,7 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="solicitarSenhaAdmin()">Painel</div>
+            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
         </form>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
@@ -315,15 +315,6 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        function solicitarSenhaAdmin() {
-            const senha = prompt('Digite a senha de administrador:');
-            if (senha === '021092') {
-                irParaAdmin();
-            } else {
-                alert('Senha incorreta!');
-            }
-        }
-
         function irParaAdmin() {
             window.location.href = 'admin.html';
         }
@@ -332,7 +323,6 @@
         window.registrarPonto = registrarPonto;
         window.gerarPDF = gerarPDF;
         window.irParaAdmin = irParaAdmin;
-        window.solicitarSenhaAdmin = solicitarSenhaAdmin;
     </script>
 </body>
 </html>
