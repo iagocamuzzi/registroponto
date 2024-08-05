@@ -120,8 +120,8 @@
                 <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
                 <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
                 <input type="number" id="salarioCadastro" placeholder="Salário" required>
-                <input type="date" id="inicioFerias" placeholder="Início das Férias">
-                <input type="date" id="fimFerias" placeholder="Fim das Férias">
+                <input type="date" id="inicioFeriasCadastro" placeholder="Início das Férias">
+                <input type="date" id="fimFeriasCadastro" placeholder="Fim das Férias">
                 <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
             </form>
         </div>
@@ -133,7 +133,7 @@
                         <th>Nome Completo</th>
                         <th>CPF</th>
                         <th>Detalhes</th>
-                        <th>Ações</th>
+                        <th>Editar</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -227,12 +227,12 @@
         import { getDatabase, ref, get, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
         const firebaseConfig = {
-            apiKey: "API_KEY",
+            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
             projectId: "pontoeletronico-f3f30",
             storageBucket: "pontoeletronico-f3f30.appspot.com",
-            messagingSenderId: "MESSAGING_SENDER_ID",
-            appId: "APP_ID",
+            messagingSenderId: "211959704845",
+            appId: "1:211959704845:web:933e082e07312c67165444",
             databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
         };
 
@@ -263,8 +263,8 @@
             const whatsapp = document.getElementById('whatsappCadastro').value.trim();
             const dataAdmissao = document.getElementById('dataAdmissaoCadastro').value;
             const salario = document.getElementById('salarioCadastro').value.trim();
-            const inicioFerias = document.getElementById('inicioFerias').value;
-            const fimFerias = document.getElementById('fimFerias').value;
+            const inicioFerias = document.getElementById('inicioFeriasCadastro').value;
+            const fimFerias = document.getElementById('fimFeriasCadastro').value;
 
             if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
                 alert('Por favor, preencha todos os campos.');
@@ -295,12 +295,12 @@
                     const celulaNomeCompleto = novaLinha.insertCell(0);
                     const celulaCpf = novaLinha.insertCell(1);
                     const celulaDetalhes = novaLinha.insertCell(2);
-                    const celulaAcoes = novaLinha.insertCell(3);
+                    const celulaEditar = novaLinha.insertCell(3);
 
                     celulaNomeCompleto.textContent = funcionario.nomeCompleto;
                     celulaCpf.textContent = funcionario.cpf;
                     celulaDetalhes.innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
-                    celulaAcoes.innerHTML = `<button onclick="editarFuncionario('${funcionario.cpf}')">Editar</button>`;
+                    celulaEditar.innerHTML = `<button onclick="editarFuncionario('${funcionario.cpf}')">Editar</button>`;
                 });
             }
         }
@@ -354,6 +354,52 @@
                 <p><strong>Início das Férias:</strong> ${funcionario.inicioFerias || 'N/A'}</p>
                 <p><strong>Fim das Férias:</strong> ${funcionario.fimFerias || 'N/A'}</p>
             `;
+        }
+
+        async function editarFuncionario(cpf) {
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
+
+            if (snapshot.exists()) {
+                const funcionario = snapshot.val();
+                document.getElementById('editarNomeCompleto').value = funcionario.nomeCompleto;
+                document.getElementById('editarCpf').value = funcionario.cpf;
+                document.getElementById('editarDataNascimento').value = funcionario.dataNascimento;
+                document.getElementById('editarEmail').value = funcionario.email;
+                document.getElementById('editarWhatsapp').value = funcionario.whatsapp;
+                document.getElementById('editarDataAdmissao').value = funcionario.dataAdmissao;
+                document.getElementById('editarSalario').value = funcionario.salario;
+                document.getElementById('editarInicioFerias').value = funcionario.inicioFerias;
+                document.getElementById('editarFimFerias').value = funcionario.fimFerias;
+
+                showSection('editarFuncionario');
+            } else {
+                alert('Funcionário não encontrado.');
+            }
+        }
+
+        async function salvarEdicao() {
+            const nomeCompleto = document.getElementById('editarNomeCompleto').value.trim();
+            const cpf = document.getElementById('editarCpf').value.trim();
+            const dataNascimento = document.getElementById('editarDataNascimento').value;
+            const email = document.getElementById('editarEmail').value.trim();
+            const whatsapp = document.getElementById('editarWhatsapp').value.trim();
+            const dataAdmissao = document.getElementById('editarDataAdmissao').value;
+            const salario = document.getElementById('editarSalario').value.trim();
+            const inicioFerias = document.getElementById('editarInicioFerias').value;
+            const fimFerias = document.getElementById('editarFimFerias').value;
+
+            if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
+
+            alert('Dados do funcionário atualizados com sucesso!');
+            showSection('consultarCadastro');
+            carregarFuncionarios();
         }
 
         async function carregarRegistrosFuncionario() {
@@ -482,25 +528,33 @@
 
                 if (snapshot.exists()) {
                     const status = snapshot.val();
-                    Object.keys(status).forEach(cpf => {
+                    Object.keys(status).forEach(async cpf => {
                         const statusFuncionario = status[cpf];
-                        const novaLinha = tabela.insertRow();
-                        const celulaNome = novaLinha.insertCell(0);
-                        const celulaStatus = novaLinha.insertCell(1);
+                        const funcionarioRef = ref(db, `funcionarios/${cpf}`);
+                        const funcionarioSnapshot = await get(funcionarioRef);
 
-                        celulaNome.textContent = statusFuncionario.nome;
-                        celulaStatus.textContent = obterStatusFuncionario(statusFuncionario);
+                        if (funcionarioSnapshot.exists()) {
+                            const funcionario = funcionarioSnapshot.val();
+                            const hoje = new Date();
+                            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+                            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+
+                            let statusAtual = statusFuncionario.status;
+
+                            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                                statusAtual = 'Férias';
+                            }
+
+                            const novaLinha = tabela.insertRow();
+                            const celulaNome = novaLinha.insertCell(0);
+                            const celulaStatus = novaLinha.insertCell(1);
+
+                            celulaNome.textContent = statusFuncionario.nome;
+                            celulaStatus.textContent = statusAtual;
+                        }
                     });
                 }
             });
-        }
-
-        function obterStatusFuncionario(funcionario) {
-            const hoje = new Date().toISOString().split('T')[0];
-            if (funcionario.inicioFerias && funcionario.fimFerias && hoje >= funcionario.inicioFerias && hoje <= funcionario.fimFerias) {
-                return 'Férias';
-            }
-            return funcionario.status;
         }
 
         async function mostrarResumo() {
@@ -522,8 +576,9 @@
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
-                const mesAtual = new Date().getMonth();
-                const anoAtual = new Date().getFullYear();
+                const hoje = new Date();
+                const mesAtual = hoje.getMonth();
+                const anoAtual = hoje.getFullYear();
 
                 Object.keys(registros).forEach(dia => {
                     const dataRegistro = new Date(dia);
@@ -553,54 +608,6 @@
                 celulaHorasExtras.textContent = totalHorasExtras.toFixed(2);
                 celulaDiasTrabalhados.textContent = diasTrabalhados;
             }
-        }
-
-        async function editarFuncionario(cpf) {
-            const dbRef = ref(db, `funcionarios/${cpf}`);
-            const snapshot = await get(dbRef);
-
-            if (!snapshot.exists()) {
-                alert('Funcionário não encontrado.');
-                return;
-            }
-
-            const funcionario = snapshot.val();
-            document.getElementById('editarNomeCompleto').value = funcionario.nomeCompleto;
-            document.getElementById('editarCpf').value = funcionario.cpf;
-            document.getElementById('editarDataNascimento').value = funcionario.dataNascimento;
-            document.getElementById('editarEmail').value = funcionario.email;
-            document.getElementById('editarWhatsapp').value = funcionario.whatsapp;
-            document.getElementById('editarDataAdmissao').value = funcionario.dataAdmissao;
-            document.getElementById('editarSalario').value = funcionario.salario;
-            document.getElementById('editarInicioFerias').value = funcionario.inicioFerias || '';
-            document.getElementById('editarFimFerias').value = funcionario.fimFerias || '';
-
-            showSection('editarFuncionario');
-        }
-
-        async function salvarEdicao() {
-            const nomeCompleto = document.getElementById('editarNomeCompleto').value.trim();
-            const cpf = document.getElementById('editarCpf').value.trim();
-            const dataNascimento = document.getElementById('editarDataNascimento').value;
-            const email = document.getElementById('editarEmail').value.trim();
-            const whatsapp = document.getElementById('editarWhatsapp').value.trim();
-            const dataAdmissao = document.getElementById('editarDataAdmissao').value;
-            const salario = document.getElementById('editarSalario').value.trim();
-            const inicioFerias = document.getElementById('editarInicioFerias').value;
-            const fimFerias = document.getElementById('editarFimFerias').value;
-
-            if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
-                alert('Por favor, preencha todos os campos.');
-                return;
-            }
-
-            const dbRef = ref(db, `funcionarios/${cpf}`);
-            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
-
-            alert('Funcionário atualizado com sucesso!');
-            carregarFuncionarios();
-            carregarFiltroFuncionarios();
-            showSection('consultarCadastro');
         }
 
         window.toggleSubmenu = toggleSubmenu;
