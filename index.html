@@ -212,6 +212,15 @@
 
         function registrarPonto(tipo) {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const hoje = new Date();
+            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+
+            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                alert('Você está de férias. Não é possível registrar o ponto.');
+                return;
+            }
+
             const dataHora = new Date().toLocaleString();
             const data = new Date().toISOString().split('T')[0];
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
