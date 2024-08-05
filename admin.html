@@ -87,10 +87,6 @@
             border: none;
             background-color: transparent;
         }
-        #adminAuth {
-            text-align: center;
-            margin-top: 50px;
-        }
     </style>
 </head>
 <body>
@@ -226,11 +222,6 @@
             </form>
         </div>
     </div>
-    <div id="adminAuth" class="section active">
-        <h2>Administração de Pontos</h2>
-        <input type="password" id="adminPassword" placeholder="Senha" required>
-        <button type="button" onclick="checkPassword()">Acessar</button>
-    </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, get, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -253,16 +244,6 @@
             carregarFiltroFuncionarios();
             carregarDashboard();
         });
-
-        function checkPassword() {
-            const password = document.getElementById('adminPassword').value;
-            if (password === '021092') {
-                document.getElementById('adminAuth').classList.remove('active');
-                showSection('novoCadastro');
-            } else {
-                alert('Senha incorreta.');
-            }
-        }
 
         function toggleSubmenu(submenuId) {
             const submenu = document.getElementById(submenuId);
@@ -541,7 +522,7 @@
 
         function carregarDashboard() {
             const dbRef = ref(db, 'status');
-            onValue(dbRef, async (snapshot) => {
+            onValue(dbRef, (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
                 tabela.innerHTML = ''; // Limpar a tabela
 
@@ -562,33 +543,13 @@
 
                             if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
                                 statusAtual = 'Férias';
-                            } else {
-                                const dbRefRegistros = ref(db, `registros/${cpf}/${hoje.toISOString().split('T')[0]}`);
-                                const snapshotRegistros = await get(dbRefRegistros);
-
-                                if (snapshotRegistros.exists()) {
-                                    const registros = snapshotRegistros.val();
-                                    if (registros.saida) {
-                                        statusAtual = 'Fim de Expediente';
-                                    } else if (registros.retorno) {
-                                        statusAtual = 'Trabalhando (Turno 2)';
-                                    } else if (registros.pausa) {
-                                        statusAtual = 'Intervalo';
-                                    } else if (registros.entrada) {
-                                        statusAtual = 'Trabalhando (Turno 1)';
-                                    } else {
-                                        statusAtual = 'Não Registrado';
-                                    }
-                                } else {
-                                    statusAtual = 'Não Registrado';
-                                }
                             }
 
                             const novaLinha = tabela.insertRow();
                             const celulaNome = novaLinha.insertCell(0);
                             const celulaStatus = novaLinha.insertCell(1);
 
-                            celulaNome.textContent = funcionario.nomeCompleto;
+                            celulaNome.textContent = statusFuncionario.nome;
                             celulaStatus.textContent = statusAtual;
                         }
                     });
@@ -662,7 +623,6 @@
         window.carregarDashboard = carregarDashboard;
         window.editarFuncionario = editarFuncionario;
         window.salvarEdicao = salvarEdicao;
-        window.checkPassword = checkPassword;
     </script>
 </body>
 </html>
