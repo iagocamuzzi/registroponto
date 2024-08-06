@@ -111,9 +111,8 @@
             color: #FF5722;
             text-align: center;
         }
-        .admin-password {
+        #senhaPainel {
             display: none;
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -124,12 +123,8 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="mostrarCampoSenha()">Painel</div>
+            <div class="admin-button" onclick="mostrarSenha()">Painel</div>
         </form>
-        <div id="adminPasswordField" class="admin-password">
-            <input type="password" id="adminPassword" placeholder="Senha do Admin">
-            <button type="button" onclick="acessarPainel()">Entrar</button>
-        </div>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
             <div class="buttons">
@@ -164,6 +159,11 @@
             </table>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
+        <div id="senhaPainel">
+            <h2>Senha de Acesso ao Painel</h2>
+            <input type="password" id="senhaPainelInput" placeholder="Senha" required>
+            <button type="button" onclick="verificarSenha()">Acessar Painel</button>
+        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -181,6 +181,20 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+
+        function mostrarSenha() {
+            document.getElementById('acessoForm').style.display = 'none';
+            document.getElementById('senhaPainel').style.display = 'block';
+        }
+
+        function verificarSenha() {
+            const senha = document.getElementById('senhaPainelInput').value.trim();
+            if (senha === '021092') {
+                window.location.href = 'admin.html';
+            } else {
+                alert('Senha incorreta. Tente novamente.');
+            }
+        }
 
         function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
@@ -249,26 +263,25 @@
                 registros[registro.tipo] = registro.dataHora;
                 dbRef.set(registros);
 
-                // Atualizar status do funcionário
-                const status = determinarStatus(registro.tipo);
+                // Atualizar status no dashboard
+                let status = '';
+                switch (registro.tipo) {
+                    case 'entrada':
+                        status = 'Trabalhando (Turno 1)';
+                        break;
+                    case 'pausa':
+                        status = 'Intervalo';
+                        break;
+                    case 'retorno':
+                        status = 'Trabalhando (Turno 2)';
+                        break;
+                    case 'saida':
+                        status = 'Fim de Expediente';
+                        break;
+                }
                 const statusRef = db.ref(`status/${registro.cpf}`);
                 statusRef.set({ nome: registro.nome, status });
             });
-        }
-
-        function determinarStatus(tipo) {
-            switch (tipo) {
-                case 'entrada':
-                    return 'Trabalhando (Turno 1)';
-                case 'pausa':
-                    return 'Intervalo';
-                case 'retorno':
-                    return 'Trabalhando (Turno 2)';
-                case 'saida':
-                    return 'Fim de Expediente';
-                default:
-                    return 'Desconhecido';
-            }
         }
 
         function desativarBotoes() {
@@ -342,25 +355,6 @@
 
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
-
-        function mostrarCampoSenha() {
-            document.getElementById('adminPasswordField').style.display = 'block';
-        }
-
-        function acessarPainel() {
-            const senha = document.getElementById('adminPassword').value.trim();
-            if (senha === '021092') {
-                window.location.href = 'admin.html';
-            } else {
-                alert('Senha incorreta.');
-            }
-        }
-
-        window.acessarRegistro = acessarRegistro;
-        window.registrarPonto = registrarPonto;
-        window.gerarPDF = gerarPDF;
-        window.irParaAdmin = mostrarCampoSenha;
-        window.acessarPainel = acessarPainel;
     </script>
 </body>
 </html>
