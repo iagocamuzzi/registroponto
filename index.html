@@ -111,9 +111,6 @@
             color: #FF5722;
             text-align: center;
         }
-        #senhaPainel {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -123,7 +120,7 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="mostrarSenha()">Painel</div>
+            <div class="admin-button" onclick="irParaAdmin()">Painel</div>
         </form>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
@@ -159,11 +156,6 @@
             </table>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
-        <div id="senhaPainel">
-            <h2>Senha de Acesso ao Painel</h2>
-            <input type="password" id="senhaPainelInput" placeholder="Senha" required>
-            <button type="button" onclick="verificarSenha()">Acessar Painel</button>
-        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -181,20 +173,6 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
-        function mostrarSenha() {
-            document.getElementById('acessoForm').style.display = 'none';
-            document.getElementById('senhaPainel').style.display = 'block';
-        }
-
-        function verificarSenha() {
-            const senha = document.getElementById('senhaPainelInput').value.trim();
-            if (senha === '021092') {
-                window.location.href = 'admin.html';
-            } else {
-                alert('Senha incorreta. Tente novamente.');
-            }
-        }
 
         function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
@@ -226,7 +204,7 @@
 
                 if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
                     document.querySelectorAll('.button').forEach(button => button.classList.add('disabled'));
-                    document.getElementById('feriasMensagem').innerText = `Boas Férias! \nPeríodo: ${inicioFerias.toLocaleDateString()} a ${fimFerias.toLocaleDateString()}`;
+                    document.getElementById('feriasMensagem').innerText = `Boas Férias! \nPeríodo: ${formatarData(inicioFerias)} a ${formatarData(fimFerias)}`;
                     document.getElementById('feriasMensagem').style.display = 'block';
                 }
             });
@@ -262,25 +240,6 @@
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 registros[registro.tipo] = registro.dataHora;
                 dbRef.set(registros);
-
-                // Atualizar status no dashboard
-                let status = '';
-                switch (registro.tipo) {
-                    case 'entrada':
-                        status = 'Trabalhando (Turno 1)';
-                        break;
-                    case 'pausa':
-                        status = 'Intervalo';
-                        break;
-                    case 'retorno':
-                        status = 'Trabalhando (Turno 2)';
-                        break;
-                    case 'saida':
-                        status = 'Fim de Expediente';
-                        break;
-                }
-                const statusRef = db.ref(`status/${registro.cpf}`);
-                statusRef.set({ nome: registro.nome, status });
             });
         }
 
@@ -355,6 +314,27 @@
 
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
+
+        function irParaAdmin() {
+            const senha = prompt("Digite a senha de acesso ao painel:");
+            if (senha === "021092") {
+                window.location.href = 'admin.html';
+            } else {
+                alert("Senha incorreta!");
+            }
+        }
+
+        function formatarData(data) {
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        window.acessarRegistro = acessarRegistro;
+        window.registrarPonto = registrarPonto;
+        window.gerarPDF = gerarPDF;
+        window.irParaAdmin = irParaAdmin;
     </script>
 </body>
 </html>
