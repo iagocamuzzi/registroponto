@@ -521,56 +521,46 @@
         }
 
         function carregarDashboard() {
-            const dbRef = ref(db, 'status');
-            onValue(dbRef, (snapshot) => {
+            const dbRef = ref(db, 'funcionarios');
+            onValue(dbRef, async (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
                 tabela.innerHTML = ''; // Limpar a tabela
 
                 if (snapshot.exists()) {
-                    const status = snapshot.val();
-                    Object.keys(status).forEach(async cpf => {
-                        const statusFuncionario = status[cpf];
-                        const funcionarioRef = ref(db, `funcionarios/${cpf}`);
-                        const funcionarioSnapshot = await get(funcionarioRef);
+                    const funcionarios = snapshot.val();
+                    Object.keys(funcionarios).forEach(async (cpf) => {
+                        const funcionario = funcionarios[cpf];
+                        const hoje = new Date();
+                        const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+                        const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
 
-                        if (funcionarioSnapshot.exists()) {
-                            const funcionario = funcionarioSnapshot.val();
-                            const hoje = new Date();
-                            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
-                            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+                        let statusAtual = "Nenhum registro";
 
-                            let statusAtual = statusFuncionario.status;
-
-                            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
-                                statusAtual = 'Férias';
-                            } else {
-                                const registrosRef = ref(db, `registros/${cpf}/${hoje.toISOString().split('T')[0]}`);
-                                const registrosSnapshot = await get(registrosRef);
-                                if (registrosSnapshot.exists()) {
-                                    const registros = registrosSnapshot.val();
-                                    if (registros.saida) {
-                                        statusAtual = 'Fim de Expediente';
-                                    } else if (registros.retorno) {
-                                        statusAtual = 'Trabalhando (Turno 2)';
-                                    } else if (registros.pausa) {
-                                        statusAtual = 'Intervalo';
-                                    } else if (registros.entrada) {
-                                        statusAtual = 'Trabalhando (Turno 1)';
-                                    } else {
-                                        statusAtual = 'Ativo';
-                                    }
-                                } else {
-                                    statusAtual = 'Ativo';
+                        if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                            statusAtual = "Férias";
+                        } else {
+                            const dbRefRegistros = ref(db, `registros/${cpf}/${hoje.toISOString().split('T')[0]}`);
+                            const registrosSnapshot = await get(dbRefRegistros);
+                            if (registrosSnapshot.exists()) {
+                                const registros = registrosSnapshot.val();
+                                if (registros.saida) {
+                                    statusAtual = "Fim de Expediente";
+                                } else if (registros.retorno) {
+                                    statusAtual = "Trabalhando (Turno 2)";
+                                } else if (registros.pausa) {
+                                    statusAtual = "Intervalo";
+                                } else if (registros.entrada) {
+                                    statusAtual = "Trabalhando (Turno 1)";
                                 }
                             }
-
-                            const novaLinha = tabela.insertRow();
-                            const celulaNome = novaLinha.insertCell(0);
-                            const celulaStatus = novaLinha.insertCell(1);
-
-                            celulaNome.textContent = statusFuncionario.nome;
-                            celulaStatus.textContent = statusAtual;
                         }
+
+                        const novaLinha = tabela.insertRow();
+                        const celulaNome = novaLinha.insertCell(0);
+                        const celulaStatus = novaLinha.insertCell(1);
+
+                        celulaNome.textContent = funcionario.nomeCompleto;
+                        celulaStatus.textContent = statusAtual;
                     });
                 }
             });
@@ -603,13 +593,13 @@
                     const dataRegistro = new Date(dia);
                     if (dataRegistro.getMonth() === mesAtual && dataRegistro.getFullYear() === anoAtual) {
                         const registro = registros[dia];
+                        if (registro.entrada) {
+                            diasTrabalhados++;
+                        }
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
                         totalHorasExtras += horasExtras;
-                        if (registro.entrada) { // Contabilizar dia trabalhado se houver registro de entrada
-                            diasTrabalhados += 1;
-                        }
                     }
                 });
 
