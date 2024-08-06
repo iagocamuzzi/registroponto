@@ -543,6 +543,25 @@
 
                             if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
                                 statusAtual = 'Férias';
+                            } else {
+                                const registrosRef = ref(db, `registros/${cpf}/${hoje.toISOString().split('T')[0]}`);
+                                const registrosSnapshot = await get(registrosRef);
+                                if (registrosSnapshot.exists()) {
+                                    const registros = registrosSnapshot.val();
+                                    if (registros.saida) {
+                                        statusAtual = 'Fim de Expediente';
+                                    } else if (registros.retorno) {
+                                        statusAtual = 'Trabalhando (Turno 2)';
+                                    } else if (registros.pausa) {
+                                        statusAtual = 'Intervalo';
+                                    } else if (registros.entrada) {
+                                        statusAtual = 'Trabalhando (Turno 1)';
+                                    } else {
+                                        statusAtual = 'Ativo';
+                                    }
+                                } else {
+                                    statusAtual = 'Ativo';
+                                }
                             }
 
                             const novaLinha = tabela.insertRow();
@@ -588,7 +607,7 @@
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
                         totalHorasExtras += horasExtras;
-                        if (horasTrabalhadas > 0) {
+                        if (registro.entrada) { // Contabilizar dia trabalhado se houver registro de entrada
                             diasTrabalhados += 1;
                         }
                     }
