@@ -521,44 +521,45 @@
         }
 
         function carregarDashboard() {
-            const dbRef = ref(db, 'status');
+            const dbRef = ref(db, 'funcionarios');
             onValue(dbRef, (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
                 tabela.innerHTML = ''; // Limpar a tabela
 
                 if (snapshot.exists()) {
-                    const status = snapshot.val();
-                    Object.keys(status).forEach(async cpf => {
-                        const statusFuncionario = status[cpf];
-                        const funcionarioRef = ref(db, `funcionarios/${cpf}`);
-                        const funcionarioSnapshot = await get(funcionarioRef);
+                    const funcionarios = snapshot.val();
+                    Object.keys(funcionarios).forEach(cpf => {
+                        const funcionario = funcionarios[cpf];
+                        const hoje = new Date();
+                        const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+                        const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
 
-                        if (funcionarioSnapshot.exists()) {
-                            const funcionario = funcionarioSnapshot.val();
-                            const hoje = new Date();
-                            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
-                            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+                        let statusAtual = 'Nenhum registro';
 
-                            let statusAtual = statusFuncionario.status;
+                        if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                            statusAtual = 'Férias';
+                        } else {
+                            const registroRef = ref(db, `registros/${cpf}/${hoje.toISOString().split('T')[0]}`);
+                            get(registroRef).then((snapshot) => {
+                                if (snapshot.exists()) {
+                                    const registros = snapshot.val();
+                                    if (registros.saida) {
+                                        statusAtual = 'Fim de Expediente';
+                                    } else if (registros.retorno) {
+                                        statusAtual = 'Trabalhando (Turno 2)';
+                                    } else if (registros.pausa) {
+                                        statusAtual = 'Intervalo';
+                                    } else if (registros.entrada) {
+                                        statusAtual = 'Trabalhando (Turno 1)';
+                                    }
+                                }
+                                const novaLinha = tabela.insertRow();
+                                const celulaNome = novaLinha.insertCell(0);
+                                const celulaStatus = novaLinha.insertCell(1);
 
-                            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
-                                statusAtual = 'Férias';
-                            } else if (statusFuncionario.status === 'entrada') {
-                                statusAtual = 'Trabalhando (Turno 1)';
-                            } else if (statusFuncionario.status === 'pausa') {
-                                statusAtual = 'Intervalo';
-                            } else if (statusFuncionario.status === 'retorno') {
-                                statusAtual = 'Trabalhando (Turno 2)';
-                            } else if (statusFuncionario.status === 'saida') {
-                                statusAtual = 'Fim de Expediente';
-                            }
-
-                            const novaLinha = tabela.insertRow();
-                            const celulaNome = novaLinha.insertCell(0);
-                            const celulaStatus = novaLinha.insertCell(1);
-
-                            celulaNome.textContent = statusFuncionario.nome;
-                            celulaStatus.textContent = statusAtual;
+                                celulaNome.textContent = funcionario.nomeCompleto;
+                                celulaStatus.textContent = statusAtual;
+                            });
                         }
                     });
                 }
