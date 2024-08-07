@@ -121,10 +121,6 @@
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
             <div class="admin-button" onclick="solicitarSenha()">Painel</div>
-            <div id="senhaContainer" style="display: none;">
-                <input type="password" id="senhaAcesso" placeholder="Senha" required>
-                <button type="button" onclick="verificarSenha()">Entrar</button>
-            </div>
         </form>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
@@ -160,6 +156,11 @@
             </table>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
         </div>
+        <div id="senhaForm" style="display: none;">
+            <h2>Senha do Administrador</h2>
+            <input type="password" id="senhaAdmin" placeholder="Senha do Administrador" required>
+            <button type="button" onclick="acessarAdmin()">Acessar</button>
+        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -168,28 +169,15 @@
         const firebaseConfig = {
             apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
             authDomain: "pontoeletronico-f3f30.firebaseapp.com",
-            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com",
             projectId: "pontoeletronico-f3f30",
             storageBucket: "pontoeletronico-f3f30.appspot.com",
             messagingSenderId: "211959704845",
-            appId: "1:211959704845:web:933e082e07312c67165444"
+            appId: "1:211959704845:web:933e082e07312c67165444",
+            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
-        function solicitarSenha() {
-            document.getElementById('senhaContainer').style.display = 'block';
-        }
-
-        function verificarSenha() {
-            const senha = document.getElementById('senhaAcesso').value;
-            if (senha === '021092') {
-                window.location.href = 'admin.html';
-            } else {
-                alert('Senha incorreta. Tente novamente.');
-            }
-        }
 
         function acessarRegistro() {
             const cpf = document.getElementById('cpfAcesso').value.trim();
@@ -332,11 +320,25 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
+        function solicitarSenha() {
+            document.getElementById('acessoForm').style.display = 'none';
+            document.getElementById('senhaForm').style.display = 'block';
+        }
+
+        function acessarAdmin() {
+            const senha = document.getElementById('senhaAdmin').value;
+            if (senha === '021092') {
+                window.location.href = 'admin.html';
+            } else {
+                alert('Senha incorreta.');
+            }
+        }
+
         window.acessarRegistro = acessarRegistro;
         window.registrarPonto = registrarPonto;
         window.gerarPDF = gerarPDF;
         window.solicitarSenha = solicitarSenha;
-        window.verificarSenha = verificarSenha;
+        window.acessarAdmin = acessarAdmin;
     </script>
 </body>
 </html>
