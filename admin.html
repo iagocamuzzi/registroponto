@@ -543,13 +543,13 @@
 
                             if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
                                 statusAtual = 'Férias';
-                            } else if (statusFuncionario.tipo === 'entrada') {
+                            } else if (statusFuncionario.status === 'entrada') {
                                 statusAtual = 'Trabalhando (Turno 1)';
-                            } else if (statusFuncionario.tipo === 'pausa') {
+                            } else if (statusFuncionario.status === 'pausa') {
                                 statusAtual = 'Intervalo';
-                            } else if (statusFuncionario.tipo === 'retorno') {
+                            } else if (statusFuncionario.status === 'retorno') {
                                 statusAtual = 'Trabalhando (Turno 2)';
-                            } else if (statusFuncionario.tipo === 'saida') {
+                            } else if (statusFuncionario.status === 'saida') {
                                 statusAtual = 'Fim de Expediente';
                             }
 
@@ -596,7 +596,7 @@
                         const horasExtras = parseFloat(calcularHorasExtras(registro));
                         totalHorasTrabalhadas += horasTrabalhadas;
                         totalHorasExtras += horasExtras;
-                        if (registro.entrada) {
+                        if (horasTrabalhadas > 0) {
                             diasTrabalhados += 1;
                         }
                     }
