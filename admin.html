@@ -46,7 +46,7 @@
         .container {
             flex-grow: 1;
             padding: 20px;
-            overflow-y: auto; /* Adicionado para permitir rolagem caso a tela fique cheia */
+            overflow-y: auto;
         }
         h1 {
             text-align: center;
@@ -62,7 +62,7 @@
             font-size: 16px;
             margin-bottom: 10px;
             width: 100%;
-            box-sizing: border-box; /* Garante que o padding não quebre a largura */
+            box-sizing: border-box;
         }
         table {
             width: 100%;
@@ -96,9 +96,18 @@
             border: none;
             border-radius: 5px;
             margin-bottom: 20px;
+            font-weight: bold;
         }
         .btn-pdf:hover {
             background-color: #555;
+        }
+        .filters-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .filters-group .filter {
+            flex: 1;
         }
     </style>
 </head>
@@ -151,34 +160,35 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Lista de funcionários será inserida aqui -->
                 </tbody>
             </table>
             <div id="detalhesFuncionario"></div>
         </div>
         <div id="relatorios" class="section">
-            <div class="filter">
-                <label for="filterFuncionario">Selecionar Funcionário:</label>
-                <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
-                    <option value="">Selecione um funcionário</option>
-                </select>
-            </div>
-            <div class="filter">
-                <label for="filterMes">Selecionar Mês:</label>
-                <select id="filterMes" onchange="carregarRegistrosFuncionario()">
-                    <option value="0">Janeiro</option>
-                    <option value="1">Fevereiro</option>
-                    <option value="2">Março</option>
-                    <option value="3">Abril</option>
-                    <option value="4">Maio</option>
-                    <option value="5">Junho</option>
-                    <option value="6">Julho</option>
-                    <option value="7" selected>Agosto</option>
-                    <option value="8">Setembro</option>
-                    <option value="9">Outubro</option>
-                    <option value="10">Novembro</option>
-                    <option value="11">Dezembro</option>
-                </select>
+            <div class="filters-group">
+                <div class="filter">
+                    <label for="filterFuncionario">Selecionar Funcionário:</label>
+                    <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
+                        <option value="">Selecione um funcionário</option>
+                    </select>
+                </div>
+                <div class="filter">
+                    <label for="filterMes">Selecionar Mês:</label>
+                    <select id="filterMes" onchange="carregarRegistrosFuncionario()">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2">Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6">Julho</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                </div>
             </div>
             <table>
                 <thead>
@@ -194,7 +204,6 @@
                     </tr>
                 </thead>
                 <tbody id="registrosTabelaAdmin">
-                    <!-- Registros serão inseridos aqui -->
                 </tbody>
             </table>
             <div class="admin-buttons">
@@ -211,20 +220,39 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Status dos funcionários serão inseridos aqui -->
                 </tbody>
             </table>
         </div>
         <div id="resumoMes" class="section">
             <h2>Resumo do Mês</h2>
-            <div class="filter">
-                <label for="filterResumoFuncionario">Selecionar Funcionário:</label>
-                <select id="filterResumoFuncionario" onchange="mostrarResumo()">
-                    <option value="">Selecione um funcionário</option>
-                </select>
+            
+            <div class="filters-group">
+                <div class="filter">
+                    <label for="filterResumoFuncionario">Selecionar Funcionário:</label>
+                    <select id="filterResumoFuncionario" onchange="mostrarResumo()">
+                        <option value="">Selecione um funcionário</option>
+                    </select>
+                </div>
+                <div class="filter">
+                    <label for="filterResumoMes">Selecionar Mês (Retroativo):</label>
+                    <select id="filterResumoMes" onchange="mostrarResumo()">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2">Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6">Julho</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                </div>
             </div>
             
-            <button class="btn-pdf" onclick="gerarResumoPDF()">Gerar PDF do Resumo</button>
+            <button class="btn-pdf" onclick="gerarResumoPDF()">Baixar PDF Detalhado do Mês Selecionado</button>
 
             <table id="resumoTabela">
                 <thead>
@@ -236,7 +264,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Resumo do mês será inserido aqui -->
                 </tbody>
             </table>
         </div>
@@ -279,6 +306,10 @@
         const db = getDatabase(app);
 
         document.addEventListener('DOMContentLoaded', () => {
+            const currentMonth = new Date().getMonth();
+            document.getElementById('filterMes').value = currentMonth;
+            document.getElementById('filterResumoMes').value = currentMonth;
+            
             carregarFuncionarios();
             carregarFiltroFuncionarios();
             carregarDashboard();
@@ -324,7 +355,7 @@
             const snapshot = await get(dbRef);
 
             const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
-            tabelaFuncionarios.innerHTML = ''; // Limpar a tabela
+            tabelaFuncionarios.innerHTML = ''; 
 
             if (snapshot.exists()) {
                 const funcionarios = snapshot.val();
@@ -350,8 +381,8 @@
 
             const filtroFuncionario = document.getElementById('filterFuncionario');
             const filtroResumoFuncionario = document.getElementById('filterResumoFuncionario');
-            filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
-            filtroResumoFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; // Limpar o filtro
+            filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; 
+            filtroResumoFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; 
 
             if (snapshot.exists()) {
                 const funcionarios = snapshot.val();
@@ -452,7 +483,7 @@
             const snapshot = await get(dbRef);
 
             const tabela = document.getElementById('registrosTabelaAdmin');
-            tabela.innerHTML = ''; // Limpar a tabela
+            tabela.innerHTML = ''; 
 
             const mesSelecionado = parseInt(document.getElementById('filterMes').value,10);
             const diasDoMes = obterDiasDoMes(mesSelecionado);
@@ -542,11 +573,11 @@
             const saida = registro.saida ? new Date(`1970-01-01T${extrairHora(registro.saida)}`) : null;
 
             if (entrada && saida) {
-                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); // Diferença em horas
+                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); 
                 if (pausa && retorno) {
-                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); // Subtrair intervalo de pausa
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); 
                 }
-                return horasTrabalhadas.toFixed(2); // Retornar com 2 casas decimais
+                return horasTrabalhadas.toFixed(2); 
             }
             return '';
         }
@@ -554,7 +585,7 @@
         function calcularHorasExtras(registro) {
             const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
             if (horasTrabalhadas > 8) {
-                return (horasTrabalhadas - 8).toFixed(2); // Subtrair 8 horas e retornar com 2 casas decimais
+                return (horasTrabalhadas - 8).toFixed(2); 
             }
             return '0.00';
         }
@@ -563,7 +594,7 @@
             const dbRef = ref(db, 'funcionarios');
             onValue(dbRef, (snapshot) => {
                 const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
-                tabela.innerHTML = ''; // Limpar a tabela
+                tabela.innerHTML = ''; 
 
                 if (snapshot.exists()) {
                     const funcionarios = snapshot.val();
@@ -609,8 +640,11 @@
             return 'Não Registrado';
         }
 
+        // Função principal do Resumo na tela HTML (agora pega do mês selecionado)
         async function mostrarResumo() {
             const cpf = document.getElementById('filterResumoFuncionario').value;
+            const mesSelecionado = parseInt(document.getElementById('filterResumoMes').value, 10);
+            
             if (!cpf) {
                 document.getElementById('resumoTabela').getElementsByTagName('tbody')[0].innerHTML = '';
                 return;
@@ -620,7 +654,7 @@
             const snapshot = await get(dbRef);
 
             const tabela = document.getElementById('resumoTabela').getElementsByTagName('tbody')[0];
-            tabela.innerHTML = ''; // Limpar a tabela
+            tabela.innerHTML = ''; 
 
             if (snapshot.exists()) {
                 const registros = snapshot.val();
@@ -628,20 +662,21 @@
                 let totalHorasExtras = 0;
                 let diasTrabalhados = 0;
 
-                const hoje = new Date();
-                const mesAtual = hoje.getMonth();
-                const anoAtual = hoje.getFullYear();
-
                 Object.keys(registros).forEach(dia => {
-                    const dataRegistro = new Date(dia);
-                    if (dataRegistro.getMonth() === mesAtual && dataRegistro.getFullYear() === anoAtual) {
+                    const [anoStr, mesStr, diaDaSemanaStr] = dia.split('-');
+                    
+                    // O JavaScript lida com meses de 0 (Jan) a 11 (Dez)
+                    if ((parseInt(mesStr, 10) - 1) === mesSelecionado) {
                         const registro = registros[dia];
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-                        const horasExtras = parseFloat(calcularHorasExtras(registro));
-                        totalHorasTrabalhadas += horasTrabalhadas;
-                        totalHorasExtras += horasExtras;
-                        if (registro.entrada) {
-                            diasTrabalhados += 1;
+                        
+                        if (!isNaN(horasTrabalhadas)) {
+                            const horasExtras = parseFloat(calcularHorasExtras(registro));
+                            totalHorasTrabalhadas += horasTrabalhadas;
+                            totalHorasExtras += horasExtras;
+                            if (registro.entrada) {
+                                diasTrabalhados += 1;
+                            }
                         }
                     }
                 });
@@ -662,43 +697,107 @@
             }
         }
 
-        // Função para Gerar PDF
-        function gerarResumoPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+        // Nova Função Assíncrona para Gerar PDF Completo com Detalhes Retroativos
+        async function gerarResumoPDF() {
+            const cpf = document.getElementById('filterResumoFuncionario').value;
+            const selectMes = document.getElementById('filterResumoMes');
+            const mesSelecionado = parseInt(selectMes.value, 10);
+            const nomeMes = selectMes.options[selectMes.selectedIndex].text;
 
-            doc.text("Resumo Mensal de Pontos", 20, 20);
-
-            // Busca a tabela de resumo no HTML
-            const tabela = document.getElementById('resumoTabela').getElementsByTagName('tbody')[0];
-            const linhas = tabela.getElementsByTagName('tr');
-
-            if (linhas.length === 0) {
-                alert("Não há dados para gerar o PDF. Por favor, selecione um funcionário primeiro.");
+            if (!cpf) {
+                alert("Por favor, selecione um funcionário primeiro.");
                 return;
             }
 
-            let y = 30; // Posição vertical inicial no PDF
-            for (let i = 0; i < linhas.length; i++) {
-                const colunas = linhas[i].getElementsByTagName('td');
-                const nome = colunas[0].textContent;
-                const horasTrab = colunas[1].textContent;
-                const horasExt = colunas[2].textContent;
-                const diasTrab = colunas[3].textContent;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
 
-                doc.text(`Nome: ${nome}`, 20, y);
-                doc.text(`Horas Trabalhadas: ${horasTrab} | Extras: ${horasExt} | Dias: ${diasTrab}`, 20, y + 5);
+            const dbRef = ref(db, `registros/${cpf}`);
+            const snapshot = await get(dbRef);
+            
+            const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
+            const funcionario = funcionarioSnapshot.val();
+
+            let totalHorasTrabalhadas = 0;
+            let totalHorasExtras = 0;
+            let diasTrabalhados = 0;
+            let diasComHorasExtras = []; // Array para guardar os dias em que ele fez hora extra
+
+            if (snapshot.exists()) {
+                const registros = snapshot.val();
                 
-                y += 15; // Dá um espaço para o próximo funcionário
-                
-                // Cria uma nova página se chegar no final do documento
-                if (y > 280) {
-                    doc.addPage();
-                    y = 20;
-                }
+                // Ordenar as datas para o PDF ficar organizado cronologicamente
+                const diasOrdenados = Object.keys(registros).sort();
+
+                diasOrdenados.forEach(dia => {
+                    const [anoStr, mesStr, diaStr] = dia.split('-');
+                    
+                    if ((parseInt(mesStr, 10) - 1) === mesSelecionado) {
+                        const registro = registros[dia];
+                        const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+                        
+                        if (!isNaN(horasTrabalhadas)) {
+                            const horasExtras = parseFloat(calcularHorasExtras(registro));
+                            totalHorasTrabalhadas += horasTrabalhadas;
+                            totalHorasExtras += horasExtras;
+                            if (registro.entrada) {
+                                diasTrabalhados += 1;
+                            }
+
+                            // Se houve hora extra no dia, guarda no array
+                            if (horasExtras > 0) {
+                                diasComHorasExtras.push({
+                                    dataFormatada: `${diaStr}/${mesStr}/${anoStr}`,
+                                    horas: horasExtras.toFixed(2)
+                                });
+                            }
+                        }
+                    }
+                });
             }
 
-            doc.save(`Resumo_Mensal_Pontos.pdf`);
+            if (totalHorasTrabalhadas === 0) {
+                alert(`Nenhum registro encontrado para o funcionário em ${nomeMes}.`);
+                return;
+            }
+
+            // --- Estruturação Visual do PDF ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(`Resumo Mensal de Ponto - ${nomeMes}`, 20, 20);
+            
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            let y = 35;
+            
+            doc.text(`Nome: ${funcionario.nomeCompleto}`, 20, y); y += 10;
+            doc.text(`Horas Trabalhadas: ${totalHorasTrabalhadas.toFixed(2)} horas`, 20, y); y += 10;
+            doc.text(`Horas Extras (Totais): ${totalHorasExtras.toFixed(2)} horas`, 20, y); y += 10;
+            doc.text(`Dias Trabalhados: ${diasTrabalhados}`, 20, y); y += 20;
+
+            // --- Bloco de Detalhamento de Horas Extras ---
+            if (totalHorasExtras > 0 && diasComHorasExtras.length > 0) {
+                doc.setFont("helvetica", "bold");
+                doc.text("Detalhamento de Horas Extras por Dia:", 20, y);
+                doc.setFont("helvetica", "normal");
+                y += 10;
+
+                // Linha divisória
+                doc.line(20, y-5, 190, y-5);
+
+                diasComHorasExtras.forEach(item => {
+                    doc.text(`• Dia ${item.dataFormatada} => + ${item.horas} horas`, 20, y);
+                    y += 10;
+                    
+                    // Se o texto chegar muito perto do fim da página, cria uma nova
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                });
+            }
+
+            doc.save(`Resumo_Ponto_${funcionario.nomeCompleto.replace(/\s+/g, '_')}_${nomeMes}.pdf`);
         }
 
         window.toggleSubmenu = toggleSubmenu;
@@ -714,7 +813,7 @@
         window.carregarDashboard = carregarDashboard;
         window.editarFuncionario = editarFuncionario;
         window.salvarEdicao = salvarEdicao;
-        window.gerarResumoPDF = gerarResumoPDF; // Exposição da função para o HTML
+        window.gerarResumoPDF = gerarResumoPDF; 
     </script>
 </body>
 </html>
