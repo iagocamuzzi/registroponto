@@ -222,6 +222,7 @@
                     <!-- Resumo do mês será inserido aqui -->
                 </tbody>
             </table>
+            <button id="btnGerarResumoPdf" type="button" onclick="gerarResumoPDF()" style="margin-top:20px;">Gerar Resumo em PDF</button>
         </div>
         <div id="editarFuncionario" class="section">
             <h2>Editar Funcionário</h2>
@@ -640,6 +641,43 @@
             }
         }
 
+        
+        async function gerarResumoPDF(){
+            const cpf=document.getElementById('filterResumoFuncionario').value;
+            if(!cpf){alert('Selecione um funcionário.');return;}
+            const snapFunc=await get(ref(db,`funcionarios/${cpf}`));
+            const snapReg=await get(ref(db,`registros/${cpf}`));
+            if(!snapFunc.exists()){alert('Funcionário não encontrado.');return;}
+            const funcionario=snapFunc.val();
+            const registros=snapReg.exists()?snapReg.val():{};
+            let totalHoras=0,totalExtras=0,dias=0;
+            const extras=[];
+            Object.keys(registros).sort().forEach(data=>{
+                const r=registros[data];
+                const ht=parseFloat(calcularHorasTrabalhadas(r)||0);
+                const he=parseFloat(calcularHorasExtras(r)||0);
+                if(r.entrada) dias++;
+                totalHoras+=isNaN(ht)?0:ht;
+                totalExtras+=isNaN(he)?0:he;
+                if(he>0) extras.push([data.split('-').reverse().join('/'),he.toFixed(2)]);
+            });
+            const {jsPDF}=window.jspdf;
+            const doc=new jsPDF();
+            let y=15;
+            doc.setFontSize(16);
+            doc.text('RESUMO MENSAL DE PONTO',20,y); y+=10;
+            doc.setFontSize(11);
+            doc.text('Funcionário: '+funcionario.nomeCompleto,20,y); y+=8;
+            doc.text('Nome Completo | Horas Trabalhadas | Horas Extras | Dias Trabalhados',20,y); y+=8;
+            doc.text(`${funcionario.nomeCompleto} | ${totalHoras.toFixed(2)} | ${totalExtras.toFixed(2)} | ${dias}`,20,y);
+            y+=15;
+            if(extras.length){
+              doc.text('Detalhamento das Horas Extras',20,y); y+=8;
+              extras.forEach(e=>{doc.text(`${e[0]}   ${e[1]} h`,20,y); y+=7;});
+            }
+            doc.save('Resumo_'+funcionario.nomeCompleto+'.pdf');
+        }
+
         window.toggleSubmenu = toggleSubmenu;
         window.showSection = showSection;
         window.cadastrarFuncionario = cadastrarFuncionario;
@@ -654,5 +692,6 @@
         window.editarFuncionario = editarFuncionario;
         window.salvarEdicao = salvarEdicao;
     </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
