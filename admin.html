@@ -149,6 +149,23 @@
                     <option value="">Selecione um funcionário</option>
                 </select>
             </div>
+            <div class="filter">
+                <label for="filterMes">Selecionar Mês:</label>
+                <select id="filterMes" onchange="carregarRegistrosFuncionario()">
+                    <option value="0">Janeiro</option>
+                    <option value="1">Fevereiro</option>
+                    <option value="2">Março</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Maio</option>
+                    <option value="5">Junho</option>
+                    <option value="6">Julho</option>
+                    <option value="7" selected>Agosto</option>
+                    <option value="8">Setembro</option>
+                    <option value="9">Outubro</option>
+                    <option value="10">Novembro</option>
+                    <option value="11">Dezembro</option>
+                </select>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -415,7 +432,8 @@
             const tabela = document.getElementById('registrosTabelaAdmin');
             tabela.innerHTML = ''; // Limpar a tabela
 
-            const diasDoMes = obterDiasDoMesAtual();
+            const mesSelecionado = parseInt(document.getElementById('filterMes').value,10);
+            const diasDoMes = obterDiasDoMes(mesSelecionado);
             const registros = snapshot.exists() ? snapshot.val() : {};
 
             diasDoMes.forEach(dia => {
@@ -424,11 +442,10 @@
             });
         }
 
-        function obterDiasDoMesAtual() {
+        function obterDiasDoMes(mes) {
             const diasDoMes = [];
             const dataAtual = new Date();
             const ano = dataAtual.getFullYear();
-            const mes = dataAtual.getMonth();
 
             for (let dia = 1; dia <= new Date(ano, mes + 1, 0).getDate(); dia++) {
                 const data = new Date(ano, mes, dia);
