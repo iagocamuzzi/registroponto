@@ -25,15 +25,19 @@
         h1 {
             text-align: center;
         }
+        
+        /* Modificação Principal: Transformado em Grid 2x2 */
         .buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Cria exatamente 2 colunas iguais */
+            gap: 15px; /* Espaçamento entre os botões */
             justify-content: center;
+            margin-bottom: 20px;
         }
+        
         .button {
-            width: 100px;
-            height: 150px;
+            width: 100%; /* Preenche o espaço da coluna */
+            height: 140px; /* Altura ajustada para manter uma boa proporção no celular */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -45,7 +49,9 @@
             cursor: pointer;
             opacity: 1;
             transition: opacity 0.3s;
+            box-sizing: border-box;
         }
+        
         .entrada { background-color: #4CAF50; }
         .pausa { background-color: #FFC107; }
         .retorno { background-color: #FF9800; }
@@ -67,11 +73,14 @@
             font-size: 16px;
             width: 100%;
             margin-top: 10px;
+            box-sizing: border-box;
         }
         #nomeFuncionario {
             margin-bottom: 20px;
             font-size: 18px;
             text-align: center;
+            font-weight: bold;
+            text-transform: uppercase;
         }
         .admin-button {
             margin-top: 20px;
@@ -120,10 +129,11 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="solicitarSenha()">Painel</div>
+            <div class="admin-button" onclick="solicitarSenha()">Painel Admin</div>
         </form>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
+            
             <div class="buttons">
                 <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
                     <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
@@ -142,6 +152,7 @@
                     Saída
                 </div>
             </div>
+            
             <div id="feriasMensagem" class="ferias-mensagem" style="display: none;"></div>
             <table id="tabelaRegistros" class="registro-dia" style="display: none;">
                 <thead>
@@ -162,6 +173,7 @@
             <button type="button" onclick="acessarAdmin()">Acessar</button>
         </div>
     </div>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
