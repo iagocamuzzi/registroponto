@@ -50,8 +50,8 @@
         }
 
         .container {
-            width: 90%;
-            max-width: 1000px;
+            width: 95%;
+            max-width: 1100px;
             margin-top: 40px;
             background-color: #fff;
             padding: 30px;
@@ -135,6 +135,27 @@
             color: #888;
             font-style: italic;
         }
+
+        .btn-email {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .btn-email:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-email:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -172,7 +193,8 @@
                     <th style="text-align: left;">Funcionário</th>
                     <th>Dias Trabalhados</th>
                     <th>Total de Horas</th>
-                    <th>Saldo (Banco de Horas)</th>
+                    <th>Saldo (Banco)</th>
+                    <th>Ação</th>
                 </tr>
             </thead>
             <tbody>
@@ -180,6 +202,9 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Biblioteca EmailJS -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -198,13 +223,21 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // ==========================================
+        // CONFIGURAÇÕES DO EMAILJS (INSIRA SUAS CHAVES AQUI)
+        // ==========================================
+        const EMAILJS_PUBLIC_KEY = "COLOQUE_SUA_PUBLIC_KEY_AQUI"; 
+        const EMAILJS_SERVICE_ID = "COLOQUE_SEU_SERVICE_ID_AQUI"; 
+        const EMAILJS_TEMPLATE_ID = "COLOQUE_SEU_TEMPLATE_ID_AQUI";
+        
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+
         document.addEventListener('DOMContentLoaded', () => {
             const currentMonth = new Date().getMonth();
             document.getElementById('filterMesGestor').value = currentMonth;
             carregarDashboardGestor();
         });
 
-        // Funções de Cálculo (Reaproveitadas do Admin para garantir os mesmos resultados)
         function extrairHora(dataHora) {
             if(!dataHora) return '';
             const partes = dataHora.split(' ');
@@ -261,25 +294,23 @@
             return diasDoMes;
         }
 
-        // Função Principal do Dashboard
         async function carregarDashboardGestor() {
             const mesSelecionado = parseInt(document.getElementById('filterMesGestor').value, 10);
             const tabela = document.getElementById('tabelaGestor').getElementsByTagName('tbody')[0];
             
-            tabela.innerHTML = '<tr><td colspan="4" class="loading">Buscando dados da equipe...</td></tr>';
+            tabela.innerHTML = '<tr><td colspan="5" class="loading">Buscando dados da equipe...</td></tr>';
 
             const dbRefFuncionarios = ref(db, 'funcionarios');
             const snapFuncionarios = await get(dbRefFuncionarios);
 
             if (!snapFuncionarios.exists()) {
-                tabela.innerHTML = '<tr><td colspan="4" class="loading">Nenhum funcionário cadastrado no sistema.</td></tr>';
+                tabela.innerHTML = '<tr><td colspan="5" class="loading">Nenhum funcionário cadastrado no sistema.</td></tr>';
                 return;
             }
 
             const funcionarios = snapFuncionarios.val();
-            tabela.innerHTML = ''; // Limpa a tabela para receber os dados reais
+            tabela.innerHTML = ''; 
 
-            // Ordena os funcionários por ordem alfabética para facilitar a leitura
             const chavesOrdenadas = Object.keys(funcionarios).sort((a, b) => 
                 funcionarios[a].nomeCompleto.localeCompare(funcionarios[b].nomeCompleto)
             );
@@ -300,19 +331,16 @@
                     const registroData = registros[dia] || { data: dia, entrada: '', saida: '', abonado: false, cpf };
                     const registroCompleto = { data: dia, ...registroData, cpf };
 
-                    // Soma Horas e Dias
                     const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registroCompleto));
                     if (!isNaN(horasTrabalhadas) && horasTrabalhadas > 0) {
                         totalHorasTrabalhadas += horasTrabalhadas;
                         diasTrabalhados += 1;
                     }
 
-                    // Soma Saldo do Banco
                     const saldoDiario = parseFloat(calcularSaldoDiario(registroCompleto));
                     totalSaldoBanco += saldoDiario;
                 });
 
-                // Criação da linha na tabela
                 const novaLinha = tabela.insertRow();
                 
                 let classeSaldo = "";
@@ -331,11 +359,108 @@
                     <td>${diasTrabalhados} dias</td>
                     <td>${totalHorasTrabalhadas.toFixed(2)}h</td>
                     <td class="${classeSaldo}">${prefixoSaldo}${Math.abs(totalSaldoBanco).toFixed(2)}h</td>
+                    <td><button class="btn-email" id="btn-email-${cpf}" onclick="enviarResumoEmail('${cpf}')">📧 Enviar E-mail</button></td>
                 `;
             }
         }
 
+        async function enviarResumoEmail(cpf) {
+            if (EMAILJS_PUBLIC_KEY === "COLOQUE_SUA_PUBLIC_KEY_AQUI") {
+                alert("Erro: Você precisa configurar suas chaves do EmailJS no código primeiro!");
+                return;
+            }
+
+            const botao = document.getElementById(`btn-email-${cpf}`);
+            botao.disabled = true;
+            botao.innerText = "⏳ Enviando...";
+
+            try {
+                const selectMes = document.getElementById('filterMesGestor');
+                const mesSelecionado = parseInt(selectMes.value, 10);
+                const nomeMes = selectMes.options[selectMes.selectedIndex].text;
+
+                const dbRef = ref(db, `registros/${cpf}`);
+                const snapshot = await get(dbRef);
+                
+                const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
+                const funcionario = funcionarioSnapshot.val();
+
+                if (!funcionario.email) {
+                    alert(`O funcionário ${funcionario.nomeCompleto} não possui e-mail cadastrado.`);
+                    botao.disabled = false;
+                    botao.innerText = "📧 Enviar E-mail";
+                    return;
+                }
+
+                let totalHorasTrabalhadas = 0;
+                let totalSaldoBanco = 0;
+                let diasTrabalhados = 0;
+                let textoMovimentacoes = ""; 
+
+                const diasDoMes = obterDiasDoMes(mesSelecionado);
+                const registros = snapshot.exists() ? snapshot.val() : {};
+
+                diasDoMes.forEach(dia => {
+                    const [anoStr, mesStr, diaStr] = dia.split('-');
+                    const registroData = registros[dia] || { data: dia, entrada: '', saida: '', abonado: false, cpf };
+                    const registroCompleto = { data: dia, ...registroData, cpf };
+                    
+                    const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registroCompleto));
+                    if (!isNaN(horasTrabalhadas) && horasTrabalhadas > 0) {
+                        totalHorasTrabalhadas += horasTrabalhadas;
+                        diasTrabalhados += 1;
+                    }
+
+                    const saldoDiario = parseFloat(calcularSaldoDiario(registroCompleto));
+                    totalSaldoBanco += saldoDiario;
+
+                    if (saldoDiario !== 0) {
+                        let sinal = saldoDiario > 0 ? "+" : "";
+                        let motivo = saldoDiario < 0 ? "Horas Devidas" : "Horas Extras";
+                        textoMovimentacoes += `- Dia ${diaStr}/${mesStr}/${anoStr}: ${sinal}${saldoDiario.toFixed(2)}h (${motivo})\n`;
+                    } else if (registroCompleto.abonado) {
+                        textoMovimentacoes += `- Dia ${diaStr}/${mesStr}/${anoStr}: 0.00h (Feriado/Abonado)\n`;
+                    }
+                });
+
+                if (textoMovimentacoes === "") {
+                    textoMovimentacoes = "Nenhuma alteração ou falta registrada no período.";
+                }
+
+                const textoBancoFormatado = totalSaldoBanco >= 0 ? `+ ${totalSaldoBanco.toFixed(2)} horas` : `${totalSaldoBanco.toFixed(2)} horas`;
+
+                // Monta o pacote de dados para enviar pelo EmailJS
+                const parametrosEmail = {
+                    email_destino: funcionario.email,
+                    nome_funcionario: funcionario.nomeCompleto,
+                    mes_referencia: nomeMes,
+                    total_horas: totalHorasTrabalhadas.toFixed(2),
+                    dias_trabalhados: diasTrabalhados,
+                    saldo_banco: textoBancoFormatado,
+                    detalhes_movimentacao: textoMovimentacoes
+                };
+
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, parametrosEmail);
+
+                botao.style.backgroundColor = "#27ae60"; 
+                botao.innerText = "✅ Enviado!";
+                
+                setTimeout(() => {
+                    botao.style.backgroundColor = "#007bff";
+                    botao.innerText = "📧 Enviar E-mail";
+                    botao.disabled = false;
+                }, 3000);
+
+            } catch (error) {
+                console.error("Erro ao enviar e-mail:", error);
+                alert("Ocorreu um erro ao tentar enviar o e-mail.");
+                botao.disabled = false;
+                botao.innerText = "📧 Tentar Novamente";
+            }
+        }
+
         window.carregarDashboardGestor = carregarDashboardGestor;
+        window.enviarResumoEmail = enviarResumoEmail;
     </script>
 </body>
 </html>
