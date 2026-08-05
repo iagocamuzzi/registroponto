@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Gestor - Resultados</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .top-navbar {
+            background-color: #1a1a1a;
+            color: white;
+            width: 100%;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .top-navbar h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+
+        .btn-voltar {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            background-color: #333;
+            padding: 8px 15px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .btn-voltar:hover {
+            background-color: #555;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin-top: 40px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .header-painel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        .header-painel h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select {
+            padding: 8px 15px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+            background-color: #fafafa;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background-color: #fdfdfd;
+        }
+
+        td.nome-funcionario {
+            text-align: left;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .valor-positivo { 
+            color: #27ae60; 
+            font-weight: bold; 
+        }
+        
+        .valor-negativo { 
+            color: #e74c3c; 
+            font-weight: bold; 
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="top-navbar">
+        <h1>Painel do Gestor</h1>
+        <a href="index.html" class="btn-voltar">Sair / Voltar</a>
+    </div>
+
+    <div class="container">
+        <div class="header-painel">
+            <h2>Visão Geral da Equipe</h2>
+            <div class="filter-group">
+                <label for="filterMesGestor">Mês de Referência:</label>
+                <select id="filterMesGestor" onchange="carregarDashboardGestor()">
+                    <option value="0">Janeiro</option>
+                    <option value="1">Fevereiro</option>
+                    <option value="2">Março</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Maio</option>
+                    <option value="5">Junho</option>
+                    <option value="6">Julho</option>
+                    <option value="7">Agosto</option>
+                    <option value="8">Setembro</option>
+                    <option value="9">Outubro</option>
+                    <option value="10">Novembro</option>
+                    <option value="11">Dezembro</option>
+                </select>
+            </div>
+        </div>
+
+        <table id="tabelaGestor">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Funcionário</th>
+                    <th>Dias Trabalhados</th>
+                    <th>Total de Horas</th>
+                    <th>Saldo (Banco de Horas)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dados carregados via JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBixwM9Z55v1FHTyoR9msbCpFbYbW2ske4",
+            authDomain: "pontoeletronico-f3f30.firebaseapp.com",
+            projectId: "pontoeletronico-f3f30",
+            storageBucket: "pontoeletronico-f3f30.appspot.com",
+            messagingSenderId: "211959704845",
+            appId: "1:211959704845:web:933e082e07312c67165444",
+            databaseURL: "https://pontoeletronico-f3f30-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentMonth = new Date().getMonth();
+            document.getElementById('filterMesGestor').value = currentMonth;
+            carregarDashboardGestor();
+        });
+
+        // Funções de Cálculo (Reaproveitadas do Admin para garantir os mesmos resultados)
+        function extrairHora(dataHora) {
+            if(!dataHora) return '';
+            const partes = dataHora.split(' ');
+            return partes.length > 1 ? partes[1] : '';
+        }
+
+        function calcularHorasTrabalhadas(registro) {
+            const entrada = registro.entrada ? new Date(`1970-01-01T${extrairHora(registro.entrada)}`) : null;
+            const pausa = registro.pausa ? new Date(`1970-01-01T${extrairHora(registro.pausa)}`) : null;
+            const retorno = registro.retorno ? new Date(`1970-01-01T${extrairHora(registro.retorno)}`) : null;
+            const saida = registro.saida ? new Date(`1970-01-01T${extrairHora(registro.saida)}`) : null;
+
+            if (entrada && saida) {
+                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); 
+                if (pausa && retorno) {
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); 
+                }
+                return horasTrabalhadas.toFixed(2); 
+            }
+            return '';
+        }
+
+        function calcularSaldoDiario(registro) {
+            const dataRegistro = new Date(`${registro.data}T00:00:00`);
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0); 
+
+            const diaDaSemana = dataRegistro.getDay(); 
+            let jornadaDoDia = 0;
+
+            if (diaDaSemana >= 1 && diaDaSemana <= 5) jornadaDoDia = 8;
+            else if (diaDaSemana === 6) jornadaDoDia = 4;
+            else if (diaDaSemana === 0) jornadaDoDia = 0;
+
+            if (registro.abonado) jornadaDoDia = 0;
+
+            let horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+            if (isNaN(horasTrabalhadas)) horasTrabalhadas = 0;
+
+            if (dataRegistro > hoje && horasTrabalhadas === 0) return '0.00';
+
+            const saldo = horasTrabalhadas - jornadaDoDia;
+            return saldo.toFixed(2);
+        }
+
+        function obterDiasDoMes(mes) {
+            const diasDoMes = [];
+            const dataAtual = new Date();
+            const ano = dataAtual.getFullYear();
+            for (let dia = 1; dia <= new Date(ano, mes + 1, 0).getDate(); dia++) {
+                const data = new Date(ano, mes, dia);
+                diasDoMes.push(data.toISOString().split('T')[0]);
+            }
+            return diasDoMes;
+        }
+
+        // Função Principal do Dashboard
+        async function carregarDashboardGestor() {
+            const mesSelecionado = parseInt(document.getElementById('filterMesGestor').value, 10);
+            const tabela = document.getElementById('tabelaGestor').getElementsByTagName('tbody')[0];
+            
+            tabela.innerHTML = '<tr><td colspan="4" class="loading">Buscando dados da equipe...</td></tr>';
+
+            const dbRefFuncionarios = ref(db, 'funcionarios');
+            const snapFuncionarios = await get(dbRefFuncionarios);
+
+            if (!snapFuncionarios.exists()) {
+                tabela.innerHTML = '<tr><td colspan="4" class="loading">Nenhum funcionário cadastrado no sistema.</td></tr>';
+                return;
+            }
+
+            const funcionarios = snapFuncionarios.val();
+            tabela.innerHTML = ''; // Limpa a tabela para receber os dados reais
+
+            // Ordena os funcionários por ordem alfabética para facilitar a leitura
+            const chavesOrdenadas = Object.keys(funcionarios).sort((a, b) => 
+                funcionarios[a].nomeCompleto.localeCompare(funcionarios[b].nomeCompleto)
+            );
+
+            for (const cpf of chavesOrdenadas) {
+                const funcionario = funcionarios[cpf];
+                const dbRefRegistros = ref(db, `registros/${cpf}`);
+                const snapRegistros = await get(dbRefRegistros);
+
+                let totalHorasTrabalhadas = 0;
+                let totalSaldoBanco = 0;
+                let diasTrabalhados = 0;
+
+                const diasDoMes = obterDiasDoMes(mesSelecionado);
+                const registros = snapRegistros.exists() ? snapRegistros.val() : {};
+
+                diasDoMes.forEach(dia => {
+                    const registroData = registros[dia] || { data: dia, entrada: '', saida: '', abonado: false, cpf };
+                    const registroCompleto = { data: dia, ...registroData, cpf };
+
+                    // Soma Horas e Dias
+                    const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registroCompleto));
+                    if (!isNaN(horasTrabalhadas) && horasTrabalhadas > 0) {
+                        totalHorasTrabalhadas += horasTrabalhadas;
+                        diasTrabalhados += 1;
+                    }
+
+                    // Soma Saldo do Banco
+                    const saldoDiario = parseFloat(calcularSaldoDiario(registroCompleto));
+                    totalSaldoBanco += saldoDiario;
+                });
+
+                // Criação da linha na tabela
+                const novaLinha = tabela.insertRow();
+                
+                let classeSaldo = "";
+                let prefixoSaldo = "";
+                
+                if(totalSaldoBanco > 0) {
+                    classeSaldo = "valor-positivo";
+                    prefixoSaldo = "+ ";
+                } else if(totalSaldoBanco < 0) {
+                    classeSaldo = "valor-negativo";
+                    prefixoSaldo = "- ";
+                }
+
+                novaLinha.innerHTML = `
+                    <td class="nome-funcionario">${funcionario.nomeCompleto}</td>
+                    <td>${diasTrabalhados} dias</td>
+                    <td>${totalHorasTrabalhadas.toFixed(2)}h</td>
+                    <td class="${classeSaldo}">${prefixoSaldo}${Math.abs(totalSaldoBanco).toFixed(2)}h</td>
+                `;
+            }
+        }
+
+        window.carregarDashboardGestor = carregarDashboardGestor;
+    </script>
+</body>
+</html>
