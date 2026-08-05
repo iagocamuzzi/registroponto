@@ -60,9 +60,11 @@
             height: 50px;
             margin-bottom: 10px;
         }
+        /* Classe que impede o clique e dá aspecto visual de bloqueado */
         .disabled {
             opacity: 0.5;
-            pointer-events: none;
+            pointer-events: none; 
+            filter: grayscale(100%); /* Opcional: deixa os botões desabilitados cinzas para dar mais clareza */
         }
         form {
             margin-bottom: 20px;
@@ -126,7 +128,6 @@
         <h1>Sistema de Ponto Eletrônico</h1>
         <form id="acessoForm">
             <h2>Acesso ao Registro de Ponto</h2>
-            <!-- Campo atualizado para abrir o teclado numérico no celular -->
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" inputmode="numeric" pattern="[0-9]*" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
             <div class="admin-button" onclick="solicitarSenha()">Painel Admin</div>
@@ -162,7 +163,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Registros do dia serão inseridos aqui -->
                 </tbody>
             </table>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
@@ -214,7 +214,6 @@
                 carregarRegistrosDoDia();
                 desativarBotoes();
 
-                // Verificar se o funcionário está de férias
                 const hoje = new Date();
                 const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
                 const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
@@ -238,13 +237,17 @@
                 return;
             }
 
+            // ANTI-DUPLO CLIQUE: Desativa TODOS os botões instantaneamente no exato segundo do toque.
+            const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+            botoes.forEach(botao => document.getElementById(botao).classList.add('disabled'));
+
             const dataHora = new Date().toLocaleString();
             const data = new Date().toISOString().split('T')[0];
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
 
+            // Salva no banco (que agora aciona a nova sequência sozinho) e joga na tabela visual
             salvarRegistroLocalmente(registro);
             adicionarRegistroNaTabela(registro);
-            document.getElementById(tipo).classList.add('disabled');
 
             if (tipo === 'saida') {
                 document.getElementById('gerarPDF').style.display = 'block';
@@ -256,24 +259,46 @@
             dbRef.get().then(snapshot => {
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 registros[registro.tipo] = registro.dataHora;
-                dbRef.set(registros);
+                
+                // Só recalcula e libera o próximo botão depois de confirmar a gravação na nuvem
+                dbRef.set(registros).then(() => {
+                    desativarBotoes();
+                });
             });
         }
 
         function desativarBotoes() {
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dbRef = db.ref(`registros/${funcionario.cpf}/${new Date().toISOString().split('T')[0]}`);
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${funcionario.cpf}/${dataAtual}`);
+            
             dbRef.get().then(snapshot => {
                 const registros = snapshot.exists() ? snapshot.val() : {};
+                
+                // 1. Inicia apagando todos por padrão
                 const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
                 botoes.forEach(botao => {
-                    const btnElement = document.getElementById(botao);
-                    if (registros[botao]) {
-                        btnElement.classList.add('disabled');
-                    } else {
-                        btnElement.classList.remove('disabled');
-                    }
+                    document.getElementById(botao).classList.add('disabled');
                 });
+
+                // 2. Aplica a trilha obrigatória habilitando o próximo da fila
+                if (!registros.entrada) {
+                    // Começo do dia: Libera Entrada
+                    document.getElementById('entrada').classList.remove('disabled');
+                    
+                } else if (registros.entrada && !registros.pausa && !registros.saida) {
+                    // Já bateu a Entrada: Libera Pausa e Saída (saída pra casos de meio período)
+                    document.getElementById('pausa').classList.remove('disabled');
+                    document.getElementById('saida').classList.remove('disabled');
+                    
+                } else if (registros.pausa && !registros.retorno) {
+                    // Já bateu a Pausa: Libera somente o Retorno
+                    document.getElementById('retorno').classList.remove('disabled');
+                    
+                } else if (registros.retorno && !registros.saida) {
+                    // Retornou do almoço/pausa: Libera somente a Saída
+                    document.getElementById('saida').classList.remove('disabled');
+                }
             });
         }
 
@@ -285,7 +310,7 @@
                 if (snapshot.exists()) {
                     const registros = snapshot.val();
                     const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
-                    tabela.innerHTML = ''; // Limpar a tabela
+                    tabela.innerHTML = ''; 
                     Object.keys(registros).forEach(tipo => {
                         const novaLinha = tabela.insertRow();
                         const celulaTipo = novaLinha.insertCell(0);
