@@ -46,6 +46,7 @@
         .container {
             flex-grow: 1;
             padding: 20px;
+            overflow-y: auto; /* Adicionado para permitir rolagem caso a tela fique cheia */
         }
         h1 {
             text-align: center;
@@ -61,6 +62,7 @@
             font-size: 16px;
             margin-bottom: 10px;
             width: 100%;
+            box-sizing: border-box; /* Garante que o padding não quebre a largura */
         }
         table {
             width: 100%;
@@ -86,6 +88,17 @@
         .editable {
             border: none;
             background-color: transparent;
+        }
+        .btn-pdf {
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .btn-pdf:hover {
+            background-color: #555;
         }
     </style>
 </head>
@@ -118,9 +131,10 @@
                 <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
                 <input type="email" id="emailCadastro" placeholder="Email" required>
                 <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
-                
-                
-                
+                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
+                <input type="number" id="salarioCadastro" placeholder="Salário" required>
+                <input type="date" id="inicioFeriasCadastro" placeholder="Início das Férias">
+                <input type="date" id="fimFeriasCadastro" placeholder="Fim das Férias">
                 
                 <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
             </form>
@@ -209,6 +223,9 @@
                     <option value="">Selecione um funcionário</option>
                 </select>
             </div>
+            
+            <button class="btn-pdf" onclick="gerarResumoPDF()">Gerar PDF do Resumo</button>
+
             <table id="resumoTabela">
                 <thead>
                     <tr>
@@ -222,7 +239,6 @@
                     <!-- Resumo do mês será inserido aqui -->
                 </tbody>
             </table>
-            <button id="btnGerarResumoPdf" type="button" onclick="gerarResumoPDF()" style="margin-top:20px;">Gerar Resumo em PDF</button>
         </div>
         <div id="editarFuncionario" class="section">
             <h2>Editar Funcionário</h2>
@@ -232,14 +248,19 @@
                 <input type="date" id="editarDataNascimento" placeholder="Data de Nascimento" required>
                 <input type="email" id="editarEmail" placeholder="Email" required>
                 <input type="text" id="editarWhatsapp" placeholder="WhatsApp" required>
-                
-                
-                
+                <input type="date" id="editarDataAdmissao" placeholder="Data de Admissão" required>
+                <input type="number" id="editarSalario" placeholder="Salário" required>
+                <input type="date" id="editarInicioFerias" placeholder="Início das Férias">
+                <input type="date" id="editarFimFerias" placeholder="Fim das Férias">
                 
                 <button type="button" onclick="salvarEdicao()">Salvar</button>
             </form>
         </div>
     </div>
+    
+    <!-- Biblioteca jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getDatabase, ref, get, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -641,41 +662,43 @@
             }
         }
 
-        
-        async function gerarResumoPDF(){
-            const cpf=document.getElementById('filterResumoFuncionario').value;
-            if(!cpf){alert('Selecione um funcionário.');return;}
-            const snapFunc=await get(ref(db,`funcionarios/${cpf}`));
-            const snapReg=await get(ref(db,`registros/${cpf}`));
-            if(!snapFunc.exists()){alert('Funcionário não encontrado.');return;}
-            const funcionario=snapFunc.val();
-            const registros=snapReg.exists()?snapReg.val():{};
-            let totalHoras=0,totalExtras=0,dias=0;
-            const extras=[];
-            Object.keys(registros).sort().forEach(data=>{
-                const r=registros[data];
-                const ht=parseFloat(calcularHorasTrabalhadas(r)||0);
-                const he=parseFloat(calcularHorasExtras(r)||0);
-                if(r.entrada) dias++;
-                totalHoras+=isNaN(ht)?0:ht;
-                totalExtras+=isNaN(he)?0:he;
-                if(he>0) extras.push([data.split('-').reverse().join('/'),he.toFixed(2)]);
-            });
-            const {jsPDF}=window.jspdf;
-            const doc=new jsPDF();
-            let y=15;
-            doc.setFontSize(16);
-            doc.text('RESUMO MENSAL DE PONTO',20,y); y+=10;
-            doc.setFontSize(11);
-            doc.text('Funcionário: '+funcionario.nomeCompleto,20,y); y+=8;
-            doc.text('Nome Completo | Horas Trabalhadas | Horas Extras | Dias Trabalhados',20,y); y+=8;
-            doc.text(`${funcionario.nomeCompleto} | ${totalHoras.toFixed(2)} | ${totalExtras.toFixed(2)} | ${dias}`,20,y);
-            y+=15;
-            if(extras.length){
-              doc.text('Detalhamento das Horas Extras',20,y); y+=8;
-              extras.forEach(e=>{doc.text(`${e[0]}   ${e[1]} h`,20,y); y+=7;});
+        // Função para Gerar PDF
+        function gerarResumoPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.text("Resumo Mensal de Pontos", 20, 20);
+
+            // Busca a tabela de resumo no HTML
+            const tabela = document.getElementById('resumoTabela').getElementsByTagName('tbody')[0];
+            const linhas = tabela.getElementsByTagName('tr');
+
+            if (linhas.length === 0) {
+                alert("Não há dados para gerar o PDF. Por favor, selecione um funcionário primeiro.");
+                return;
             }
-            doc.save('Resumo_'+funcionario.nomeCompleto+'.pdf');
+
+            let y = 30; // Posição vertical inicial no PDF
+            for (let i = 0; i < linhas.length; i++) {
+                const colunas = linhas[i].getElementsByTagName('td');
+                const nome = colunas[0].textContent;
+                const horasTrab = colunas[1].textContent;
+                const horasExt = colunas[2].textContent;
+                const diasTrab = colunas[3].textContent;
+
+                doc.text(`Nome: ${nome}`, 20, y);
+                doc.text(`Horas Trabalhadas: ${horasTrab} | Extras: ${horasExt} | Dias: ${diasTrab}`, 20, y + 5);
+                
+                y += 15; // Dá um espaço para o próximo funcionário
+                
+                // Cria uma nova página se chegar no final do documento
+                if (y > 280) {
+                    doc.addPage();
+                    y = 20;
+                }
+            }
+
+            doc.save(`Resumo_Mensal_Pontos.pdf`);
         }
 
         window.toggleSubmenu = toggleSubmenu;
@@ -691,7 +714,7 @@
         window.carregarDashboard = carregarDashboard;
         window.editarFuncionario = editarFuncionario;
         window.salvarEdicao = salvarEdicao;
+        window.gerarResumoPDF = gerarResumoPDF; // Exposição da função para o HTML
     </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
