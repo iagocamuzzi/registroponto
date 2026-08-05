@@ -584,9 +584,34 @@
 
         function calcularHorasExtras(registro) {
             const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-            if (horasTrabalhadas > 8) {
-                return (horasTrabalhadas - 8).toFixed(2); 
+            
+            if (isNaN(horasTrabalhadas)) {
+                return '0.00';
             }
+
+            // Descobre qual é o dia da semana daquele registro
+            // Adicionamos 'T00:00:00' para garantir que o fuso horário (UTC) não altere o dia para o anterior
+            const dataRegistro = new Date(`${registro.data}T00:00:00`);
+            const diaDaSemana = dataRegistro.getDay(); // 0 = Domingo, 1 = Segunda ... 6 = Sábado
+
+            let jornadaDoDia = 0;
+
+            if (diaDaSemana >= 1 && diaDaSemana <= 5) {
+                // Segunda a Sexta: 8 horas
+                jornadaDoDia = 8;
+            } else if (diaDaSemana === 6) {
+                // Sábado: 4 horas
+                jornadaDoDia = 4;
+            } else if (diaDaSemana === 0) {
+                // Domingo: Fechado. Se houver registro, todo o tempo é hora extra.
+                jornadaDoDia = 0; 
+            }
+
+            // Calcula a diferença com base na jornada do dia específico
+            if (horasTrabalhadas > jornadaDoDia) {
+                return (horasTrabalhadas - jornadaDoDia).toFixed(2);
+            }
+            
             return '0.00';
         }
 
@@ -640,7 +665,6 @@
             return 'Não Registrado';
         }
 
-        // Função principal do Resumo na tela HTML (agora pega do mês selecionado)
         async function mostrarResumo() {
             const cpf = document.getElementById('filterResumoFuncionario').value;
             const mesSelecionado = parseInt(document.getElementById('filterResumoMes').value, 10);
@@ -665,7 +689,6 @@
                 Object.keys(registros).forEach(dia => {
                     const [anoStr, mesStr, diaDaSemanaStr] = dia.split('-');
                     
-                    // O JavaScript lida com meses de 0 (Jan) a 11 (Dez)
                     if ((parseInt(mesStr, 10) - 1) === mesSelecionado) {
                         const registro = registros[dia];
                         const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
@@ -697,7 +720,6 @@
             }
         }
 
-        // Nova Função Assíncrona para Gerar PDF Completo com Detalhes Retroativos
         async function gerarResumoPDF() {
             const cpf = document.getElementById('filterResumoFuncionario').value;
             const selectMes = document.getElementById('filterResumoMes');
@@ -721,12 +743,11 @@
             let totalHorasTrabalhadas = 0;
             let totalHorasExtras = 0;
             let diasTrabalhados = 0;
-            let diasComHorasExtras = []; // Array para guardar os dias em que ele fez hora extra
+            let diasComHorasExtras = []; 
 
             if (snapshot.exists()) {
                 const registros = snapshot.val();
                 
-                // Ordenar as datas para o PDF ficar organizado cronologicamente
                 const diasOrdenados = Object.keys(registros).sort();
 
                 diasOrdenados.forEach(dia => {
@@ -744,7 +765,6 @@
                                 diasTrabalhados += 1;
                             }
 
-                            // Se houve hora extra no dia, guarda no array
                             if (horasExtras > 0) {
                                 diasComHorasExtras.push({
                                     dataFormatada: `${diaStr}/${mesStr}/${anoStr}`,
@@ -761,7 +781,6 @@
                 return;
             }
 
-            // --- Estruturação Visual do PDF ---
             doc.setFont("helvetica", "bold");
             doc.setFontSize(16);
             doc.text(`Resumo Mensal de Ponto - ${nomeMes}`, 20, 20);
@@ -775,21 +794,18 @@
             doc.text(`Horas Extras (Totais): ${totalHorasExtras.toFixed(2)} horas`, 20, y); y += 10;
             doc.text(`Dias Trabalhados: ${diasTrabalhados}`, 20, y); y += 20;
 
-            // --- Bloco de Detalhamento de Horas Extras ---
             if (totalHorasExtras > 0 && diasComHorasExtras.length > 0) {
                 doc.setFont("helvetica", "bold");
                 doc.text("Detalhamento de Horas Extras por Dia:", 20, y);
                 doc.setFont("helvetica", "normal");
                 y += 10;
 
-                // Linha divisória
                 doc.line(20, y-5, 190, y-5);
 
                 diasComHorasExtras.forEach(item => {
                     doc.text(`• Dia ${item.dataFormatada} => + ${item.horas} horas`, 20, y);
                     y += 10;
                     
-                    // Se o texto chegar muito perto do fim da página, cria uma nova
                     if (y > 270) {
                         doc.addPage();
                         y = 20;
