@@ -26,18 +26,17 @@
             text-align: center;
         }
         
-        /* Modificação Principal: Transformado em Grid 2x2 */
         .buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr; /* Cria exatamente 2 colunas iguais */
-            gap: 15px; /* Espaçamento entre os botões */
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
             justify-content: center;
             margin-bottom: 20px;
         }
         
         .button {
-            width: 100%; /* Preenche o espaço da coluna */
-            height: 140px; /* Altura ajustada para manter uma boa proporção no celular */
+            width: 100%;
+            height: 140px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -127,7 +126,8 @@
         <h1>Sistema de Ponto Eletrônico</h1>
         <form id="acessoForm">
             <h2>Acesso ao Registro de Ponto</h2>
-            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" required>
+            <!-- Campo atualizado para abrir o teclado numérico no celular -->
+            <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" inputmode="numeric" pattern="[0-9]*" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
             <div class="admin-button" onclick="solicitarSenha()">Painel Admin</div>
         </form>
