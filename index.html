@@ -60,11 +60,10 @@
             height: 50px;
             margin-bottom: 10px;
         }
-        /* Classe que impede o clique e dá aspecto visual de bloqueado */
         .disabled {
             opacity: 0.5;
             pointer-events: none; 
-            filter: grayscale(100%); /* Opcional: deixa os botões desabilitados cinzas para dar mais clareza */
+            filter: grayscale(100%);
         }
         form {
             margin-bottom: 20px;
@@ -237,7 +236,7 @@
                 return;
             }
 
-            // ANTI-DUPLO CLIQUE: Desativa TODOS os botões instantaneamente no exato segundo do toque.
+            // Bloqueio imediato para evitar duplo clique
             const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
             botoes.forEach(botao => document.getElementById(botao).classList.add('disabled'));
 
@@ -245,7 +244,6 @@
             const data = new Date().toISOString().split('T')[0];
             const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
 
-            // Salva no banco (que agora aciona a nova sequência sozinho) e joga na tabela visual
             salvarRegistroLocalmente(registro);
             adicionarRegistroNaTabela(registro);
 
@@ -260,7 +258,6 @@
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 registros[registro.tipo] = registro.dataHora;
                 
-                // Só recalcula e libera o próximo botão depois de confirmar a gravação na nuvem
                 dbRef.set(registros).then(() => {
                     desativarBotoes();
                 });
@@ -281,15 +278,26 @@
                     document.getElementById(botao).classList.add('disabled');
                 });
 
-                // 2. Aplica a trilha obrigatória habilitando o próximo da fila
+                // Descobre o dia da semana atual
+                // Importante: garante que a verificação de sábado baseia-se na data local
+                const dataHoje = new Date();
+                const diaDaSemana = dataHoje.getDay(); // 0=Domingo, 1=Segunda ... 6=Sábado
+
+                // 2. Lógica da trilha de botões
                 if (!registros.entrada) {
                     // Começo do dia: Libera Entrada
                     document.getElementById('entrada').classList.remove('disabled');
                     
                 } else if (registros.entrada && !registros.pausa && !registros.saida) {
-                    // Já bateu a Entrada: Libera Pausa e Saída (saída pra casos de meio período)
-                    document.getElementById('pausa').classList.remove('disabled');
-                    document.getElementById('saida').classList.remove('disabled');
+                    // Já bateu a Entrada
+                    if (diaDaSemana === 6) { // 6 = Sábado
+                        // Sábado: Libera Saída direto (mas deixa Pausa liberada por via das dúvidas)
+                        document.getElementById('pausa').classList.remove('disabled');
+                        document.getElementById('saida').classList.remove('disabled');
+                    } else {
+                        // Segunda a Sexta: Obriga a bater a Pausa
+                        document.getElementById('pausa').classList.remove('disabled');
+                    }
                     
                 } else if (registros.pausa && !registros.retorno) {
                     // Já bateu a Pausa: Libera somente o Retorno
