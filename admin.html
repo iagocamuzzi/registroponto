@@ -500,14 +500,12 @@
         function calcularSaldoDiario(registro) {
             const dataRegistro = new Date(`${registro.data}T00:00:00`);
             
-            // Zeramos a hora de "hoje" para não dar falso positivo durante o expediente
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0); 
 
-            const diaDaSemana = dataRegistro.getDay(); // 0=Dom, 1=Seg... 6=Sab
+            const diaDaSemana = dataRegistro.getDay(); 
             let jornadaDoDia = 0;
 
-            // Define a jornada padrão
             if (diaDaSemana >= 1 && diaDaSemana <= 5) {
                 jornadaDoDia = 8;
             } else if (diaDaSemana === 6) {
@@ -516,23 +514,22 @@
                 jornadaDoDia = 0;
             }
 
-            // Se o dia foi abonado (Feriado ou Folga compensatória), ele não deve horas
-            if (registro.abonado) {
-                jornadaDoDia = 0;
-            }
-
             let horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
-            
             if (isNaN(horasTrabalhadas)) {
                 horasTrabalhadas = 0;
             }
 
-            // REGRA DE OURO: Não calcula dívida para dias que ainda não aconteceram
+            // REGRA CORRIGIDA DE ABONO / FERIADO:
+            // Se o dia foi abonado, ele não cobra meta (jornada = 0) e NÃO gera horas extras positivas 
+            // caso o funcionário tenha registrado ponto por engano ou ajuste. O saldo do dia fica neutro (0.00).
+            if (registro.abonado) {
+                return '0.00';
+            }
+
             if (dataRegistro > hoje && horasTrabalhadas === 0) {
                 return '0.00';
             }
 
-            // Saldo é o que ele trabalhou menos a meta do dia
             const saldo = horasTrabalhadas - jornadaDoDia;
             return saldo.toFixed(2);
         }
