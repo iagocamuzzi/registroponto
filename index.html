@@ -82,15 +82,6 @@
             font-weight: bold;
             text-transform: uppercase;
         }
-        .admin-button {
-            margin-top: 20px;
-            background-color: #333;
-            color: white;
-            padding: 10px;
-            text-align: center;
-            border-radius: 5px;
-            cursor: pointer;
-        }
         .registro-dia {
             margin-top: 20px;
             width: 100%;
@@ -129,7 +120,6 @@
             <h2>Acesso ao Registro de Ponto</h2>
             <input type="text" id="cpfAcesso" placeholder="CPF do Funcionário" inputmode="numeric" pattern="[0-9]*" required>
             <button type="button" onclick="acessarRegistro()">Acessar</button>
-            <div class="admin-button" onclick="solicitarSenha()">Painel Admin</div>
         </form>
         <div id="registroPonto" style="display: none;">
             <div id="nomeFuncionario"></div>
@@ -165,11 +155,6 @@
                 </tbody>
             </table>
             <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
-        </div>
-        <div id="senhaForm" style="display: none;">
-            <h2>Senha do Administrador</h2>
-            <input type="password" id="senhaAdmin" placeholder="Senha do Administrador" required>
-            <button type="button" onclick="acessarAdmin()">Acessar</button>
         </div>
     </div>
     
@@ -236,7 +221,6 @@
                 return;
             }
 
-            // Bloqueio imediato para evitar duplo clique
             const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
             botoes.forEach(botao => document.getElementById(botao).classList.add('disabled'));
 
@@ -272,39 +256,26 @@
             dbRef.get().then(snapshot => {
                 const registros = snapshot.exists() ? snapshot.val() : {};
                 
-                // 1. Inicia apagando todos por padrão
                 const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
                 botoes.forEach(botao => {
                     document.getElementById(botao).classList.add('disabled');
                 });
 
-                // Descobre o dia da semana atual
-                // Importante: garante que a verificação de sábado baseia-se na data local
                 const dataHoje = new Date();
-                const diaDaSemana = dataHoje.getDay(); // 0=Domingo, 1=Segunda ... 6=Sábado
+                const diaDaSemana = dataHoje.getDay(); 
 
-                // 2. Lógica da trilha de botões
                 if (!registros.entrada) {
-                    // Começo do dia: Libera Entrada
                     document.getElementById('entrada').classList.remove('disabled');
-                    
                 } else if (registros.entrada && !registros.pausa && !registros.saida) {
-                    // Já bateu a Entrada
-                    if (diaDaSemana === 6) { // 6 = Sábado
-                        // Sábado: Libera Saída direto (mas deixa Pausa liberada por via das dúvidas)
+                    if (diaDaSemana === 6) { 
                         document.getElementById('pausa').classList.remove('disabled');
                         document.getElementById('saida').classList.remove('disabled');
                     } else {
-                        // Segunda a Sexta: Obriga a bater a Pausa
                         document.getElementById('pausa').classList.remove('disabled');
                     }
-                    
                 } else if (registros.pausa && !registros.retorno) {
-                    // Já bateu a Pausa: Libera somente o Retorno
                     document.getElementById('retorno').classList.remove('disabled');
-                    
                 } else if (registros.retorno && !registros.saida) {
-                    // Retornou do almoço/pausa: Libera somente a Saída
                     document.getElementById('saida').classList.remove('disabled');
                 }
             });
@@ -365,25 +336,9 @@
             doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
         }
 
-        function solicitarSenha() {
-            document.getElementById('acessoForm').style.display = 'none';
-            document.getElementById('senhaForm').style.display = 'block';
-        }
-
-        function acessarAdmin() {
-            const senha = document.getElementById('senhaAdmin').value;
-            if (senha === '021092') {
-                window.location.href = 'admin.html';
-            } else {
-                alert('Senha incorreta.');
-            }
-        }
-
         window.acessarRegistro = acessarRegistro;
         window.registrarPonto = registrarPonto;
         window.gerarPDF = gerarPDF;
-        window.solicitarSenha = solicitarSenha;
-        window.acessarAdmin = acessarAdmin;
     </script>
 </body>
 </html>
