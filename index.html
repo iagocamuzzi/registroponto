@@ -359,28 +359,119 @@
             document.getElementById('tabelaRegistros').style.display = 'table';
         }
 
-        function gerarPDF() {
+        async function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
             const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
-            const dataAtual = new Date().toLocaleDateString();
+            const cpfLimpo = funcionario.cpf.replace(/\D/g, "");
+            const dataAtualStr = new Date().toISOString().split('T')[0];
+            const dataExibicao = new Date().toLocaleDateString();
+
+            // Busca os registros diretamente do Firebase para garantir que traz o dia todo
+            const snapshot = await db.ref(`registros/${cpfLimpo}/${dataAtualStr}`).get();
+            const registros = snapshot.exists() ? snapshot.val() : {};
+
+            // Cabeçalho do Comprovante
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
             doc.text(`Comprovante de Registro de Ponto`, 20, 20);
+            
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
             doc.text(`Funcionário: ${funcionario.nomeCompleto}`, 20, 30);
-            doc.text(`Data: ${dataAtual}`, 20, 40);
+            doc.text(`CPF: ${funcionario.cpf}`, 20, 38);
+            doc.text(`Data de Emissão: ${dataExibicao}`, 20, 46);
 
-            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
-            const linhas = tabela.getElementsByTagName('tr');
+            doc.setLineWidth(0.5);
+            doc.line(20, 52, 190, 52);
 
-            let y = 50;
-            for (let i = 0; i < linhas.length; i++) {
-                const tipo = linhas[i].getElementsByTagName('td')[0].textContent;
-                const horario = linhas[i].getElementsByTagName('td')[1].textContent;
-                doc.text(`${tipo}: ${horario}`, 20, y);
-                y += 10;
+            // Listagem dos horários do dia
+            doc.setFont("helvetica", "bold");
+            doc.text(`Marcações do Dia:`, 20, 62);
+            
+            doc.setFont("helvetica", "normal");
+            let y = 72;
+            
+            const tiposPermitidos = [
+                { chave: 'entrada', label: 'Entrada' },
+                { chave: 'pausa', label: 'Pausa (Almoço)' },
+                { chave: 'retorno', label: 'Retorno (Almoço)' },
+                { chave: 'saida', label: 'Saída' }
+            ];
+
+            tiposPermitidos.forEach(item => {
+                if (registros[item.chave]) {
+                    // Extrai apenas o horário (HH:MM:SS) caso venha com data junto
+                    const horarioCompleto = registros[item.chave];
+                    const horaFormatada = horarioCompleto.includes(' ') ? horarioCompleto.split(' ')[1] : horarioCompleto;
+                    doc.text(`- ${item.label}: ${horaFormatada}`, 25, y);
+                    y += 10;
+                } else {
+                    doc.text(`- ${item.label}: Não registrado`, 25, y);
+                    y += 10;
+                }
+            });
+
+            // Cálculo das Horas e Saldo (Extra / Devidas) para exibir no PDF
+            function extrairHora(dataHora) {
+                if(!dataHora) return '';
+                const partes = dataHora.split(' ');
+                return partes.length > 1 ? partes[1] : '';
             }
 
-            doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtual}.pdf`);
+            let totalHoras = 0;
+            const entrada = registros.entrada ? new Date(`1970-01-01T${extrairHora(registros.entrada)}`) : null;
+            const pausa = registros.pausa ? new Date(`1970-01-01T${extrairHora(registros.pausa)}`) : null;
+            const retorno = registros.retorno ? new Date(`1970-01-01T${extrairHora(registros.retorno)}`) : null;
+            const saida = registros.saida ? new Date(`1970-01-01T${extrairHora(registros.saida)}`) : null;
+
+            if (entrada && saida) {
+                let horasTrab = (saida - entrada) / (1000 * 60 * 60);
+                if (pausa && retorno) {
+                    horasTrab -= (retorno - pausa) / (1000 * 60 * 60);
+                }
+                totalHoras = horasTrab;
+            }
+
+            // Calcula a jornada esperada do dia da semana
+            const dataObj = new Date(`${dataAtualStr}T00:00:00`);
+            const diaSemana = dataObj.getDay();
+            let jornadaDia = 0;
+            if (diaSemana >= 1 && diaSemana <= 5) jornadaDia = 8;
+            else if (diaSemana === 6) jornadaDia = 4;
+
+            let saldoDia = totalHoras - jornadaDia;
+            if (registros.abonado) saldoDia = 0;
+
+            y += 5;
+            doc.setLineWidth(0.2);
+            doc.line(20, y, 190, y);
+            y += 10;
+
+            doc.setFont("helvetica", "bold");
+            doc.text(`Resumo do Expediente:`, 20, y);
+            y += 8;
+
+            doc.setFont("helvetica", "normal");
+            doc.text(`• Total Trabalhado: ${totalHoras.toFixed(2)} horas`, 25, y);
+            y += 8;
+
+            let textoSaldo = "";
+            if (registros.abonado) {
+                textoSaldo = "Dia Abonado / Feriado (Sem saldo de horas debitado)";
+            } else if (saldoDia > 0) {
+                textoSaldo = `+ ${saldoDia.toFixed(2)} horas (Hora Extra)`;
+            } else if (saldoDia < 0) {
+                textoSaldo = `${saldoDia.toFixed(2)} horas (Horas Devidas)`;
+            } else {
+                textoSaldo = `0.00 horas (Jornada cumprida exata)`;
+            }
+
+            doc.text(`• Saldo do Dia: ${textoSaldo}`, 25, y);
+
+            // Salva o arquivo PDF
+            doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtualStr}.pdf`);
         }
 
         window.acessarRegistro = acessarRegistro;
